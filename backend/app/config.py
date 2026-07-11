@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # CORS — comma-separated list of allowed frontend origins. Needs every
     # host:port the browser actually loads the app from: localhost:3000 for
     # `make frontend`, localhost:3007 for the docker-compose port mapping.
-    frontend_origin: str = "http://localhost:3000,http://localhost:3007"
+    frontend_origin: str = "https://eppb-baiterek-muslima.duckdns.org,http://localhost:3007"
 
     # LLM-провайдер (M4). Пусто у обоих -> AI-роуты на детерминированном фолбэке.
     # Приоритет: если задан ANTHROPIC_API_KEY — Claude; иначе, если задан
