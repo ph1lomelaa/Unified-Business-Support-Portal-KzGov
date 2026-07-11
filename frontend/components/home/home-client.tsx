@@ -213,9 +213,7 @@ function Hero() {
             <span className="block">Все меры поддержки бизнеса</span>
             <span className="block text-brand-green">— в одном портале</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-[18px] leading-relaxed text-muted sm:text-[22px]">
-            Все меры поддержки бизнеса от 7 институтов развития — в одном портале
-          </p>
+          
         </div>
       </div>
     </section>
