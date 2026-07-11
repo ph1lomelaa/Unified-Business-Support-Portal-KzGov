@@ -1,0 +1,20 @@
+{
+  "id": "information",
+  "title": "Информационная услуга",
+  "category": "investment",
+  "schema": {
+    "title": "Информационная услуга",
+    "pages": [
+      {
+        "name": "request",
+        "title": "Обращение",
+        "elements": [
+          { "type": "text", "name": "fullName", "title": "ФИО", "isRequired": true },
+          { "type": "text", "name": "email", "title": "Email", "inputType": "email", "isRequired": true },
+          { "type": "text", "name": "phone", "title": "Телефон", "inputType": "tel", "isRequired": true },
+          { "type": "comment", "name": "question", "title": "Вопрос", "isRequired": true }
+        ]
+      }
+    ]
+  }
+}

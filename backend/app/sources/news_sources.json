@@ -1,0 +1,19 @@
+[
+  {
+    "id": "baiterek",
+    "name": "Холдинг «Байтерек»",
+    "sourceOrgId": "baiterek",
+    "baseUrl": "https://baiterek.gov.kz",
+    "listingUrl": "https://baiterek.gov.kz/ru/pr/news/list/",
+    "maxItems": 12,
+    "selectors": {
+      "itemTag": "a",
+      "itemClass": "news-item",
+      "dateClass": "news-date-time",
+      "imageClass": "preview_picture",
+      "detailContainerClass": "news-detail",
+      "detailTextClass": "text",
+      "detailImageClass": "detail_picture"
+    }
+  }
+]

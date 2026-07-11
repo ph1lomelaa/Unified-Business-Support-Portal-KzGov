@@ -1,0 +1,17 @@
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+backend/eppb.db
+.env
+.env.local
+*.db
+dist/
+build/
+.DS_Store
+backend/storage/
+frontend/.env.local
+.claude
+.pytest_cache

@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* EPPB design system v3 — damu.kz-inspired public portal, Baiterek-wide. */
+@theme {
+  /* Core */
+  --color-brand-green: #0b7a3e;
+  --color-brand-green-hover: color-mix(in srgb, var(--color-brand-green) 84%, black);
+  --color-gold: #b89758;
+  --color-gold-hover: color-mix(in srgb, var(--color-gold) 82%, black);
+
+  --color-ink: #121517; /* graphite — header, footer, dark panels, display headings */
+  --color-ink-hover: #23282b;
+  --color-accent: var(--color-brand-green);
+  --color-accent-hover: var(--color-brand-green-hover);
+
+  --color-bg: #fafaf8; /* paper — page background */
+  --color-surface: #ffffff; /* cards */
+  --color-border: #e3e5e4;
+
+  --color-fg: #15181a; /* default text */
+  --color-muted: #6a7276; /* secondary text */
+
+  /* Status (muted) + chip backgrounds */
+  --color-st-blue: #4a6673;
+  --color-st-blue-bg: #e9edf0;
+  --color-st-amber: #8a5a0b;
+  --color-st-amber-bg: #f6eede;
+  --color-st-red: #a32d2d;
+  --color-st-red-bg: #f7e9e9;
+  --color-st-green: var(--color-brand-green); /* "Одобрено" = фирменный зелёный */
+  --color-st-green-bg: #e3f1ec;
+  --color-st-gray: #5b6b7b;
+  --color-st-gray-bg: #eef0f3;
+
+  --radius-card: 14px;
+  --radius-control: 10px;
+
+  /* Golos Text is the only typeface. */
+  --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 14px 34px rgba(0, 0, 0, 0.1);
+  --shadow-pop: 0 8px 28px -8px rgba(18, 21, 23, 0.18),
+    0 2px 8px -3px rgba(18, 21, 23, 0.1);
+  --shadow-soft: var(--shadow-card);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-scale: 1;
+    --section-inline: min(1200px, calc(100vw - 32px));
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: calc(15px * var(--font-scale));
+    line-height: 1.55;
+    /* tabular numerals globally for sums / dates / numbers */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+
+  /* Visible focus rings everywhere (accessibility, constitution) */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  html.a11y-mode {
+    --font-scale: 1.25;
+    --color-bg: #ffffff;
+    --color-surface: #ffffff;
+    --color-border: #111111;
+    --color-fg: #000000;
+    --color-muted: #202020;
+    --color-ink: #000000;
+    --color-brand-green: #005f2f;
+    --color-accent: #005f2f;
+  }
+
+  html.a11y-mode body {
+    line-height: 1.8;
+  }
+
+  html.a11y-mode img,
+  html.a11y-mode .photo-layer {
+    display: none !important;
+  }
+
+  html.a11y-mode *,
+  html.a11y-mode *::before,
+  html.a11y-mode *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .font-display {
+    font-family: var(--font-sans);
+  }
+  .stat-figure {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--color-brand-green);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-figure-lg {
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--color-brand-green);
+    font-variant-numeric: tabular-nums;
+  }
+  .kicker {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .card-hover {
+    transition: border-color 150ms ease, background-color 150ms ease,
+      box-shadow 150ms ease, transform 150ms ease;
+  }
+  .card-hover:hover {
+    border-color: var(--color-ink);
+    box-shadow: var(--shadow-card-hover);
+  }
+  /* skeleton shimmer (constitution: skeletons, never spinners in lists) */
+  .skeleton {
+    background: linear-gradient(90deg, #eef0f3 25%, #e3e6ea 37%, #eef0f3 63%);
+    background-size: 400% 100%;
+    animation: skeleton 1.3s ease infinite;
+    border-radius: 6px;
+  }
+  @keyframes skeleton {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+  .pulse-dot {
+    animation: pulsedot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulsedot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+/* Leaflet: убрать браузерную рамку фокуса на кликнутом полигоне региона.
+   Safari фокусирует SVG-path по клику и рисует прямоугольник по его bounding
+   box — это выглядело как оранжевый/акцентный прямоугольник вокруг области.
+   Регионы не являются клавиатурными целями, подсказка доступна по наведению. */
+.leaflet-interactive:focus {
+  outline: none;
+}
+
+/* SurveyJS Creator + Survey runtime — align accents with EPPB tokens */
+.sjs-eppb,
+.sjs-eppb-form {
+  --sjs-primary-backcolor: #0b7a3e;
+  --sjs-primary-backcolor-light: #e3f1ec;
+  --sjs-primary-backcolor-dark: #075f30;
+  --sjs-primary-forecolor: #ffffff;
+  --sjs-general-backcolor-dim: #fafaf8;
+  --sjs-corner-radius: 10px;
+  --sjs-font-family: var(--font-golos), ui-sans-serif, sans-serif;
+}

@@ -1,0 +1,57 @@
+{
+  "id": "guarantee",
+  "title": "Гарантирование",
+  "category": "guarantee",
+  "schema": {
+    "title": "Гарантирование",
+    "pages": [
+      {
+        "name": "company",
+        "title": "О компании",
+        "elements": [
+          { "type": "text", "name": "bin", "title": "БИН", "isRequired": true, "inputType": "text", "maxLength": 12 },
+          { "type": "text", "name": "companyName", "title": "Наименование компании", "readOnly": true },
+          { "type": "text", "name": "oked", "title": "ОКЭД", "readOnly": true },
+          { "type": "text", "name": "region", "title": "Регион", "readOnly": true }
+        ]
+      },
+      {
+        "name": "guarantee_parameters",
+        "title": "Параметры кредита",
+        "elements": [
+          { "type": "text", "name": "amount", "title": "Сумма кредита, ₸", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "termMonths", "title": "Срок, месяцев", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "rate", "title": "Ставка, % годовых", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "guaranteeAmount", "title": "Размер требуемой гарантии, ₸", "inputType": "number", "isRequired": true, "validators": [{ "type": "expression", "text": "Размер гарантии не должен превышать 85% суммы кредита", "expression": "{guaranteeAmount} <= {amount} * 0.85" }] },
+          { "type": "comment", "name": "purpose", "title": "Цель кредита", "isRequired": true }
+        ]
+      },
+      {
+        "name": "project",
+        "title": "Проект",
+        "elements": [
+          { "type": "comment", "name": "projectDescription", "title": "Описание проекта", "isRequired": true },
+          { "type": "dropdown", "name": "projectRegion", "title": "Регион реализации", "isRequired": true, "choices": ["Астана", "Алматы", "Шымкент", "Акмолинская область", "Алматинская область", "Карагандинская область", "Туркестанская область"] },
+          { "type": "text", "name": "jobs", "title": "Создаваемые рабочие места", "inputType": "number" }
+        ]
+      },
+      {
+        "name": "documents",
+        "title": "Документы",
+        "elements": [
+          { "type": "file", "name": "bankDecision", "title": "Решение банка", "isRequired": true },
+          { "type": "file", "name": "businessPlan", "title": "Бизнес-план" },
+          { "type": "file", "name": "collateralDocs", "title": "Документы по залогу" }
+        ]
+      },
+      {
+        "name": "sign",
+        "title": "Проверка и подписание",
+        "elements": [
+          { "type": "boolean", "name": "confirmAccuracy", "title": "Подтверждаю достоверность указанных данных", "isRequired": true },
+          { "type": "html", "name": "signHint", "html": "<p>После проверки заявление будет сформировано в PDF и подписано через NCALayer.</p>" }
+        ]
+      }
+    ]
+  }
+}

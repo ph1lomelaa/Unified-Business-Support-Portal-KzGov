@@ -1,0 +1,58 @@
+{
+  "id": "subsidy",
+  "title": "Субсидирование",
+  "category": "subsidy",
+  "schema": {
+    "title": "Субсидирование",
+    "pages": [
+      {
+        "name": "company",
+        "title": "О компании",
+        "elements": [
+          { "type": "text", "name": "bin", "title": "БИН", "isRequired": true, "inputType": "text", "maxLength": 12 },
+          { "type": "text", "name": "companyName", "title": "Наименование компании", "readOnly": true },
+          { "type": "text", "name": "oked", "title": "ОКЭД", "readOnly": true },
+          { "type": "text", "name": "region", "title": "Регион", "readOnly": true }
+        ]
+      },
+      {
+        "name": "subsidy_parameters",
+        "title": "Параметры кредита",
+        "elements": [
+          { "type": "text", "name": "amount", "title": "Сумма кредита, ₸", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "termMonths", "title": "Срок, месяцев", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "marketRate", "title": "Ставка банка, % годовых", "inputType": "number", "isRequired": true },
+          { "type": "text", "name": "borrowerRate", "title": "Ставка для заёмщика после субсидии, %", "inputType": "number", "isRequired": true },
+          { "type": "expression", "name": "estimatedSaving", "title": "Расчётная экономия, ₸", "expression": "({amount} * ({marketRate} - {borrowerRate}) / 100) * ({termMonths} / 12)", "displayStyle": "decimal" },
+          { "type": "comment", "name": "purpose", "title": "Цель финансирования", "isRequired": true }
+        ]
+      },
+      {
+        "name": "project",
+        "title": "Проект",
+        "elements": [
+          { "type": "comment", "name": "projectDescription", "title": "Описание проекта", "isRequired": true },
+          { "type": "dropdown", "name": "projectRegion", "title": "Регион реализации", "isRequired": true, "choices": ["Астана", "Алматы", "Шымкент", "Акмолинская область", "Алматинская область", "Карагандинская область", "Туркестанская область"] },
+          { "type": "text", "name": "jobs", "title": "Создаваемые рабочие места", "inputType": "number" }
+        ]
+      },
+      {
+        "name": "documents",
+        "title": "Документы",
+        "elements": [
+          { "type": "file", "name": "bankDecision", "title": "Решение банка", "isRequired": true },
+          { "type": "file", "name": "businessPlan", "title": "Бизнес-план" },
+          { "type": "file", "name": "financialStatements", "title": "Финансовая отчётность" }
+        ]
+      },
+      {
+        "name": "sign",
+        "title": "Проверка и подписание",
+        "elements": [
+          { "type": "boolean", "name": "confirmAccuracy", "title": "Подтверждаю достоверность указанных данных", "isRequired": true },
+          { "type": "html", "name": "signHint", "html": "<p>После проверки заявление будет сформировано в PDF и подписано через NCALayer.</p>" }
+        ]
+      }
+    ]
+  }
+}
