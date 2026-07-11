@@ -35,13 +35,11 @@ services:
   frontend:
     build:
       context: ./frontend
-      # `next build` bakes rewrites() into the build output (see
-      # frontend/Dockerfile) — this must match the runtime value below or
-      # the /bff proxy resolves against the wrong host at runtime.
       args:
         BACKEND_ORIGIN: http://backend:8000
     environment:
       BACKEND_ORIGIN: http://backend:8000
+    container_name: eppb-frontend
     depends_on:
       - backend
     ports:
