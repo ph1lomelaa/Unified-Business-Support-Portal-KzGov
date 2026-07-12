@@ -31,16 +31,14 @@ export function ServiceTabs({ service }: { service: ServiceFull }) {
           )}
         </div>
         {service.conditions?.length > 0 && (
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 space-y-2 text-[14px] text-ink">
             {service.conditions.map((c, i) => (
               <div
                 key={i}
-                className="flex items-baseline justify-between rounded-card border border-border bg-surface px-4 py-3 shadow-[var(--shadow-card)]"
+                className="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-4 gap-y-1 border-b border-border pb-2 last:border-b-0"
               >
-                <span className="text-[13px] text-muted">{c.label}</span>
-                <span className="num text-[16px] font-semibold text-ink">
-                  {c.value}
-                </span>
+                <span className="text-[13px] text-muted">{c.label}:</span>
+                <span className="font-medium break-words">{c.value}</span>
               </div>
             ))}
           </div>
@@ -171,14 +169,16 @@ export function ConditionPills({
   conditions: { label: string; value: string }[];
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex flex-wrap gap-3">
       {conditions.slice(0, 4).map((c, i) => (
         <div
           key={i}
-          className="rounded-card border border-border bg-surface px-5 py-4 shadow-[var(--shadow-card)]"
+          className="min-w-[175px] flex-1 rounded-full border border-border bg-bg px-4 py-3 text-sm text-ink"
         >
-          <p className="text-[12px] text-muted">{c.label}</p>
-          <p className="num mt-1 text-[28px] font-bold leading-tight text-ink">{c.value}</p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-muted">
+            {c.label}
+          </p>
+          <p className="mt-1 font-semibold leading-tight">{c.value}</p>
         </div>
       ))}
     </div>

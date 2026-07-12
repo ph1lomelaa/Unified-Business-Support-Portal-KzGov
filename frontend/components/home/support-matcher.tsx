@@ -308,15 +308,15 @@ function MatchCard({ result }: { result: MatchResult }) {
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3">
+      <div className="mt-4 space-y-2 border-y border-border py-3 text-[14px] text-ink">
         {(service.conditions ?? []).slice(0, 2).map((condition) => (
-          <div key={`${condition.label}-${condition.value}`}>
-            <p className="text-[11px] uppercase tracking-[0.06em] text-muted">{condition.label}</p>
-            <p className="num mt-1 text-[18px] font-semibold text-ink">{condition.value}</p>
-          </div>
+          <p key={`${condition.label}-${condition.value}`} className="flex flex-wrap items-baseline gap-2">
+            <span className="text-[12px] text-muted uppercase tracking-[0.06em]">{condition.label}:</span>
+            <span className="font-medium">{condition.value}</span>
+          </p>
         ))}
         {(service.conditions ?? []).length === 0 && (
-          <p className="col-span-2 text-[13px] text-muted">Условия уточняются по источнику</p>
+          <p className="text-[13px] text-muted">Условия уточняются по источнику</p>
         )}
       </div>
 
