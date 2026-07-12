@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Info, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
 } from "@/lib/navigator-session";
 
 type NavState = "idle" | "loading" | "done" | "error";
+type AiStatus = { live: boolean; mode: "live" | "fallback" | "unavailable" | "checking" };
 
 const EXAMPLES: DictKey[] = [
   "hero.ai.example.cattle",
@@ -61,7 +62,7 @@ function NavBody({ t, state, result }: { t: (k: DictKey) => string; state: NavSt
           {result.recommendations.length > 0 ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {result.recommendations.map(({ service, reason }) => (
+                {result.recommendations.map(({ service, reason, evidence }) => (
                   <div key={service.id} className="flex flex-col gap-2">
                     <ServiceCard service={service} />
                     {reason && (
@@ -70,11 +71,19 @@ function NavBody({ t, state, result }: { t: (k: DictKey) => string; state: NavSt
                         {reason}
                       </p>
                     )}
+                    {evidence && evidence.length > 0 && (
+                      <ul className="flex flex-wrap gap-1 px-1" aria-label="Условия рекомендации">
+                        {evidence.map((item) => (
+                          <li key={`${item.label}-${item.value}`} className="rounded-full bg-st-green-bg px-2 py-1 text-[11px] text-brand-green">
+                            {item.label}: {item.value}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 ))}
               </div>
-              <p className="mt-4 flex items-start gap-2 text-[12px] text-muted">
-                <Info size={15} strokeWidth={1.75} className="mt-0.5 shrink-0" />
+              <p className="mt-4 text-[12px] text-muted">
                 {t("hero.ai.disclaimer")}
                 {result.source === "fallback" && ` ${t("hero.ai.fallback")}`}
               </p>
@@ -97,6 +106,10 @@ export const HeroNavigator = React.forwardRef<HeroNavigatorHandle, { variant?: "
     const [expanded, setExpanded] = React.useState(variant === "full");
     const [state, setState] = React.useState<NavState>("idle");
     const [result, setResult] = React.useState<NavResult | null>(null);
+    const [aiStatus, setAiStatus] = React.useState<AiStatus>({
+      live: false,
+      mode: "unavailable",
+    });
 
     // Восстанавливаем последний запрос + результаты из сессии, чтобы возврат из
     // карточки услуги/каталога показывал те же рекомендации, а не пустое поле.
@@ -108,6 +121,12 @@ export const HeroNavigator = React.forwardRef<HeroNavigatorHandle, { variant?: "
         setState("done");
         setExpanded(true);
       }
+    }, []);
+
+    React.useEffect(() => {
+      api<AiStatus>("/api/ai/status")
+        .then((payload) => setAiStatus(payload))
+        .catch(() => setAiStatus({ live: false, mode: "unavailable" }));
     }, []);
 
     const submit = React.useCallback(async (raw?: string) => {
@@ -153,9 +172,7 @@ export const HeroNavigator = React.forwardRef<HeroNavigatorHandle, { variant?: "
               <p className="text-[17px] font-bold leading-tight text-ink">{t("hero.ai.bridgeTitle")}</p>
               <p className="mt-1 max-w-3xl text-[14px] leading-relaxed text-muted">{t("hero.ai.bridgeHint")}</p>
             </div>
-            <span className="shrink-0 rounded-full border border-border bg-bg px-2 py-1 text-[11px] font-medium text-muted">
-              {t("hero.ai.badge")}
-            </span>
+            {aiStatus.live ? <AiBadge /> : <AiStatusNote mode={aiStatus.mode} />}
           </div>
 
           <div className="flex flex-col gap-3 rounded-control border border-border bg-[#F7F8F5] p-3 focus-within:border-brand-green focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(11,122,62,0.10)] sm:flex-row sm:items-center sm:p-4">
@@ -221,9 +238,7 @@ export const HeroNavigator = React.forwardRef<HeroNavigatorHandle, { variant?: "
             <Search size={18} strokeWidth={1.75} className="text-accent" />
             {t("hero.ai.title")}
           </div>
-          <span className="shrink-0 rounded-full border border-border bg-bg px-2 py-1 text-[11px] font-medium text-muted">
-            {t("hero.ai.badge")}
-          </span>
+          {aiStatus.live ? <AiBadge /> : <AiStatusNote mode={aiStatus.mode} />}
         </div>
         <Textarea
           value={query}
@@ -256,3 +271,20 @@ export const HeroNavigator = React.forwardRef<HeroNavigatorHandle, { variant?: "
     );
   }
 );
+
+function AiBadge() {
+  return (
+    <span className="shrink-0 rounded-full border border-st-blue/30 bg-st-blue-bg px-2 py-1 text-[11px] font-medium text-st-blue">
+      AI
+    </span>
+  );
+}
+
+function AiStatusNote({ mode }: { mode: AiStatus["mode"] }) {
+  const label = mode === "checking" ? "Проверяем AI" : "AI-подбор по каталогу";
+  return (
+    <span className="shrink-0 rounded-full border border-border bg-bg px-2 py-1 text-[11px] font-medium text-muted">
+      {label}
+    </span>
+  );
+}

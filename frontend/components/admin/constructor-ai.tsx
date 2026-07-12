@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Check, GitBranch, Loader2, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, GitBranch, Info, Loader2, Sparkles, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import type { SurveyCreator } from "survey-creator-react";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +23,7 @@ type El = { name?: string; type?: string; title?: string; elements?: El[]; visib
 type Page = { name?: string; title?: string; elements?: El[] };
 type ProposedPage = { name: string; title?: string; elements: (El & { name: string; type: string })[] };
 type BranchRule = { targetField: string; targetTitle: string; visibleIf: string; reason: string };
+type AuditIssue = { severity: "error" | "warning" | "info"; field: string | null; message: string; hint: string };
 
 const CHOICE_TYPES = new Set(["radiogroup", "dropdown", "checkbox", "tagbox", "imagepicker"]);
 
@@ -59,9 +61,10 @@ export function ConstructorAi({
   creator: SurveyCreator;
   serviceId: string;
 }) {
-  const [busy, setBusy] = React.useState<"fields" | "branch" | null>(null);
+  const [busy, setBusy] = React.useState<"fields" | "branch" | "audit" | null>(null);
   const [fields, setFields] = React.useState<{ pages: ProposedPage[]; source: string } | null>(null);
   const [branch, setBranch] = React.useState<{ rules: BranchRule[]; source: string; field: string } | null>(null);
+  const [audit, setAudit] = React.useState<{ issues: AuditIssue[]; source: string; ok: boolean } | null>(null);
   const [accepted, setAccepted] = React.useState<Set<number>>(new Set());
   const [sel, setSel] = React.useState<{ name: string; type: string } | null>(null);
 
@@ -119,6 +122,25 @@ export function ConstructorAi({
     }
   }
 
+  async function runAudit() {
+    setBusy("audit");
+    try {
+      const r = await api<{ issues: AuditIssue[]; source: string; ok: boolean }>("/api/ai/audit-schema", {
+        method: "POST",
+        json: { schema: creator.JSON },
+      });
+      if (r.ok || !r.issues?.length) {
+        toast.success("Форма выглядит целостной — явных проблем не найдено.");
+        return;
+      }
+      setAudit(r);
+    } catch {
+      toast.error("Не удалось проверить форму.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function applyFields() {
     if (!fields) return;
     const json = (creator.JSON as { pages?: Page[] }) ?? {};
@@ -163,8 +185,7 @@ export function ConstructorAi({
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-control border border-st-green-bg bg-st-green-bg/40 px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-[13px] font-medium text-brand-green">
-          <Sparkles size={16} strokeWidth={1.75} />
+        <span className="text-[13px] font-medium text-brand-green">
           AI-помощь конструктору
         </span>
         <Button size="sm" variant="outline" onClick={suggestFields} disabled={busy !== null}>
@@ -182,6 +203,14 @@ export function ConstructorAi({
             <GitBranch size={16} strokeWidth={1.75} />
           )}
           Предложить ветвление
+        </Button>
+        <Button size="sm" variant="outline" onClick={runAudit} disabled={busy !== null}>
+          {busy === "audit" ? (
+            <Loader2 size={16} className="animate-spin" strokeWidth={1.75} />
+          ) : (
+            <ShieldCheck size={16} strokeWidth={1.75} />
+          )}
+          Проверить форму
         </Button>
         <span className="text-[12px] text-muted">
           {sel
@@ -282,6 +311,53 @@ export function ConstructorAi({
             <Button onClick={applyBranching} disabled={accepted.size === 0}>
               <Check size={18} strokeWidth={1.75} />
               Принять выбранные ({accepted.size})
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Проверка формы на дыры --- */}
+      <Dialog open={!!audit} onOpenChange={(o) => !o && setAudit(null)}>
+        <DialogContent width={640}>
+          <DialogHeader>
+            <DialogTitle>Проверка формы</DialogTitle>
+            <DialogDescription>
+              {audit?.source === "ai"
+                ? "AI прошёлся по схеме и нашёл потенциальные проблемы."
+                : "Автопроверка схемы по типовым правилам."}{" "}
+              Это подсказки — решайте, что исправлять.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
+            {audit?.issues.map((issue, i) => {
+              const Icon =
+                issue.severity === "error" ? AlertTriangle : issue.severity === "warning" ? AlertTriangle : Info;
+              const tone =
+                issue.severity === "error"
+                  ? "text-st-red"
+                  : issue.severity === "warning"
+                  ? "text-gold"
+                  : "text-muted";
+              return (
+                <div key={i} className="flex items-start gap-3 rounded-control border border-border p-3">
+                  <Icon size={18} strokeWidth={1.75} className={cn("mt-0.5 shrink-0", tone)} />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-ink">
+                      {issue.message}
+                      {issue.field && (
+                        <span className="ml-1.5 font-mono text-[12px] text-muted">({issue.field})</span>
+                      )}
+                    </p>
+                    {issue.hint && <p className="mt-0.5 text-[12px] text-muted">{issue.hint}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setAudit(null)}>
+              <ShieldCheck size={18} strokeWidth={1.75} />
+              Понятно
             </Button>
           </div>
         </DialogContent>

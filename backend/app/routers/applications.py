@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..integration import bus
+from ..calc_eval import FormulaError, compute_schema_expressions
 
 from ..db import get_session
 from ..models import (
@@ -167,8 +168,11 @@ def submit(
     company = db.get(Company, app.companyBin)
 
     app.answers = body.answers or app.answers
-    app.calc = body.calc or app.calc
     app.schemaSnapshot = _active_schema(db, app.serviceId)
+    try:
+        app.calc = compute_schema_expressions(app.schemaSnapshot, app.answers)
+    except FormulaError as exc:
+        raise HTTPException(422, f"Ошибка автоматического расчёта: {exc}") from exc
 
     pdf = render_application_pdf(
         app_number=app.number,
@@ -208,10 +212,10 @@ def submit(
             )
         )
         app.status = "stage2_required"
-        notif_title = f"Заявка {app.number}: нужен этап 2"
+        notif_title = f"Заявка {app.number}: нужны дополнительные сведения"
         notif_body = (
             f"Первичная заявка «{service.title if service else ''}» принята. "
-            "Для продолжения предоставьте расширенные данные и документы (этап 2)."
+            "Для продолжения предоставьте расширенные сведения и документы."
         )
     else:
         # move to in_review immediately (queue) — realistic + gives SLA start
@@ -517,15 +521,17 @@ def submit_stage2(
     if not app:
         raise HTTPException(404, "Заявка не найдена")
     if app.status != "stage2_required":
-        raise HTTPException(409, "Этап 2 недоступен для текущего статуса заявки")
+        raise HTTPException(409, "Дополнительные сведения сейчас не требуются")
 
     service = db.get(Service, app.serviceId)
     org = db.get(Organization, service.orgId) if service else None
     company = db.get(Company, app.companyBin)
 
     app.answers = {**(app.answers or {}), **(body.answers or {})}
-    if body.calc:
-        app.calc = {**(app.calc or {}), **body.calc}
+    try:
+        app.calc = compute_schema_expressions(app.schemaSnapshot, app.answers)
+    except FormulaError as exc:
+        raise HTTPException(422, f"Ошибка автоматического расчёта: {exc}") from exc
 
     # Перегенерируем PDF — теперь он содержит полную заявку (этап 1 + этап 2).
     pdf = render_application_pdf(
@@ -564,9 +570,9 @@ def submit_stage2(
         db.add(
             Notification(
                 userBin=company.bin,
-                title=f"Заявка {app.number}: этап 2 завершён",
+                title=f"Заявка {app.number}: дополнительные сведения получены",
                 body=(
-                    f"Расширенные данные по «{service.title if service else ''}» "
+                    f"Расширенные сведения по «{service.title if service else ''}» "
                     f"получены. Заявка на рассмотрении, решение до {_due_hint(service)}."
                 ),
                 appId=app.id,

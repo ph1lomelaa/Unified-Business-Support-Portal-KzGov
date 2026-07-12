@@ -22,6 +22,7 @@ export type SessionUser = {
 const NAV: { href: string; key: DictKey }[] = [
   { href: "/services", key: "nav.services" },
   { href: "/knowledge", key: "nav.knowledge" },
+  { href: "/calculators", key: "nav.calculators" },
   { href: "/map", key: "nav.map" },
   { href: "/reports", key: "nav.reports" },
   { href: "/cabinet", key: "nav.cabinetFull" },
@@ -68,14 +69,7 @@ export function Header({
           <BrandLockup size="md" />
         </Link>
 
-        <div className="ml-auto hidden text-right sm:block">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/50">
-            Поддержка предпринимателей
-          </p>
-          <p className="num text-[26px] font-bold leading-none text-white">1408</p>
-        </div>
-
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <LangSwitcher onDark />
           <button
             type="button"

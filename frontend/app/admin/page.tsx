@@ -121,7 +121,7 @@ export default async function AdminOverviewPage() {
                       <p className="mt-0.5 text-[12px] text-muted">{application.number} · {application.company?.name ?? "Компания не указана"}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <StatusChip status={application.status} />
+                      <StatusChip status={application.status} label={application.statusLabel} />
                       {application.sla && (
                         <p className={application.sla.overdue ? "mt-1 text-[12px] font-medium text-st-red" : "mt-1 text-[12px] text-muted"}>
                           {application.sla.overdue ? "SLA просрочен" : `осталось ${application.sla.remaining} дн.`}

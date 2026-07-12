@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
 from ..ai.assist import field_help, validate_field
-from ..ai.client import ai_enabled
-from ..ai.construct import suggest_branching, suggest_fields
+from ..ai.chat import chat
+from ..ai.client import ai_status
+from ..ai.construct import audit_schema, suggest_branching, suggest_fields
 from ..ai.generate import AiError, generate_service
-from ..ai.navigate import navigate
+from ..ai.navigate import navigate, warmup_navigation
 from ..ai.review import check_application
 from ..audit_log import record_audit
 from ..db import get_session
 from ..models import FormSchema, Organization, Service
 from ..schema_stages import split_schema_by_stage
-from ..session import current_user
+from ..session import SessionUser, require_role
 from ..slugify import slugify
 from .admin_services import _unique_slug
 
@@ -23,6 +24,15 @@ class NavigateBody(BaseModel):
     query: str
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatBody(BaseModel):
+    messages: list[ChatMessage] = []
+
+
 class GenerateBody(BaseModel):
     text: str
     orgId: str
@@ -30,12 +40,32 @@ class GenerateBody(BaseModel):
 
 @router.get("/status")
 def status():
-    return {"aiEnabled": ai_enabled()}
+    return ai_status()
+
+
+@router.post("/warmup")
+def warmup(
+    _user: SessionUser = Depends(require_role("admin")),
+    db: Session = Depends(get_session),
+):
+    return {"ai": ai_status(force=True), "navigation": warmup_navigation(db)}
 
 
 @router.post("/navigate")
 def ai_navigate(body: NavigateBody, db: Session = Depends(get_session)):
     return navigate(db, body.query)
+
+
+@router.post("/chat")
+def ai_chat(body: ChatBody, db: Session = Depends(get_session)):
+    messages = []
+    for item in body.messages[-12:]:
+        role = item.role.strip()
+        content = item.content.strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        messages.append({"role": role, "content": content[:2000]})
+    return chat(db, messages)
 
 
 class CheckBody(BaseModel):
@@ -114,15 +144,30 @@ def ai_suggest_branching(body: SuggestBranchingBody, db: Session = Depends(get_s
     return suggest_branching(db, body.serviceId, body.fieldName, body.formSchema or {})
 
 
+class AuditSchemaBody(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    formSchema: dict = Field(default_factory=dict, alias="schema")
+
+
+@router.post("/audit-schema")
+def ai_audit_schema(body: AuditSchemaBody):
+    """«Проверь форму на дыры» — список проблем схемы (обязательные поля,
+    идентификатор, документы, битые условия). Claude при ключе, иначе эвристики."""
+    return audit_schema(body.formSchema or {})
+
+
 @router.post("/generate-service")
 def ai_generate_service(
     body: GenerateBody,
-    request: Request,
+    user: SessionUser = Depends(require_role("admin", "analyst")),
     db: Session = Depends(get_session),
 ):
     org = db.get(Organization, body.orgId)
     if not org:
         raise HTTPException(404, "Организация не найдена")
+    if user.role == "analyst" and user.orgId != org.id:
+        raise HTTPException(403, "Аналитик может создавать услуги только своей организации")
     try:
         result = generate_service(body.text)
     except AiError as e:
@@ -165,7 +210,7 @@ def ai_generate_service(
     )
     record_audit(
         db,
-        user=current_user(request),
+        user=user,
         action="ai.generation_used",
         entity_type="service",
         entity_id=service.id,

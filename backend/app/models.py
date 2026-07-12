@@ -8,7 +8,7 @@ JSON columns hold structured data (conditions, form schema, answers, ...).
 from datetime import datetime, timezone
 from secrets import token_hex
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import BigInteger, JSON, Column
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -327,3 +327,132 @@ class IntegrationCall(SQLModel, table=True):
     responsePayload: dict = Field(default_factory=dict, sa_column=Column(JSON))
     application: str | None = None
     createdAt: datetime = Field(default_factory=utcnow, index=True)
+
+
+# --- Справочники (no-code reference dictionaries, Фаза 2) ---------------------
+class Dictionary(SQLModel, table=True):
+    """A reference dictionary (регионы, ОКЭД, категории бизнеса, типы документов).
+
+    Fully admin-managed — no code needed to add a dictionary or an item. Feeds
+    form-constructor dropdowns via `choicesByUrl` (works in both the SurveyJS
+    Creator and the runtime wizard), and `source="external"` dictionaries can be
+    refreshed from an external registry through the integration bus (Фаза 1)."""
+
+    id: str = Field(default_factory=lambda: gen_id("dic_"), primary_key=True)
+    code: str = Field(index=True, unique=True)  # "regions", "oked", "doc-types"
+    title: str
+    description: str = ""
+    source: str = "manual"  # manual|external
+    systemId: str | None = None  # bus system to sync from (source="external")
+    operation: str | None = None  # bus operation code for the sync call
+    hierarchical: bool = False  # items carry parentValue (регион -> район)
+    status: str = "active"  # active|draft|archived
+    lastSyncedAt: datetime | None = None
+    createdAt: datetime = Field(default_factory=utcnow)
+    updatedAt: datetime = Field(default_factory=utcnow)
+
+    items: list["DictionaryItem"] = Relationship(
+        back_populates="dictionary",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+
+class DictionaryItem(SQLModel, table=True):
+    id: str = Field(default_factory=lambda: gen_id("dit_"), primary_key=True)
+    dictionaryId: str = Field(foreign_key="dictionary.id", index=True)
+    value: str = Field(index=True)  # stored value / code
+    label: str  # display text
+    parentValue: str | None = Field(default=None, index=True)  # for hierarchy
+    sortOrder: int = 0
+    isActive: bool = True
+    extra: dict = Field(default_factory=dict, sa_column=Column(JSON))
+
+    dictionary: Dictionary | None = Relationship(back_populates="items")
+
+
+# --- No-code content entities (Фаза 4) ---------------------------------------
+class Report(SQLModel, table=True):
+    """Аналитический материал дочки/холдинга (4.1). Раньше — reports_data.py."""
+
+    id: str = Field(default_factory=lambda: gen_id("rep_"), primary_key=True)
+    orgId: str = Field(index=True)
+    type: str = "review"  # portal|dashboard|financial|research|review
+    title: str
+    description: str = ""
+    source: str = ""
+    period: str = ""  # период актуальности, свободный текст
+    updated: str = ""  # дата обновления (строка, как в источнике)
+    url: str = ""
+    embedUrl: str | None = None  # опц. embed (если политика фреймов позволяет)
+    sortOrder: int = 0
+    status: str = "published"  # published|draft
+    createdAt: datetime = Field(default_factory=utcnow)
+    updatedAt: datetime = Field(default_factory=utcnow)
+
+
+class Project(SQLModel, table=True):
+    """Профинансированный проект на карте (4.3). Раньше — map_data.build_projects."""
+
+    id: str = Field(primary_key=True)  # "prj-001"
+    title: str
+    orgId: str = Field(index=True)
+    regionId: str = Field(index=True)
+    industry: str = Field(index=True)
+    status: str = Field(default="Финансируется", index=True)
+    year: int = Field(default=2026, index=True)
+    amount: int = Field(default=0, sa_column=Column(BigInteger))
+    jobs: int = 0
+    lat: float | None = None
+    lon: float | None = None
+    city: str = ""
+    description: str = ""
+    url: str = "/services"
+    createdAt: datetime = Field(default_factory=utcnow)
+    updatedAt: datetime = Field(default_factory=utcnow)
+
+
+class Calculator(SQLModel, table=True):
+    """Интерактивный калькулятор (4.2): реальный инструмент из формулы, не текст.
+
+    Админ задаёт входные поля и формулу над их именами — фронт рендерит рабочий
+    расчёт. Использует тот же движок выражений, что и expression-поля форм."""
+
+    id: str = Field(default_factory=lambda: gen_id("calc_"), primary_key=True)
+    slug: str = Field(index=True, unique=True)
+    title: str
+    summary: str = ""
+    # [{name, label, type: number|percent, default, min, max, suffix}]
+    inputs: list = Field(default_factory=list, sa_column=Column(JSON))
+    formula: str = ""  # выражение над именами входов: "amount * rate / 100 * term / 12"
+    resultLabel: str = "Результат"
+    resultSuffix: str = "₸"
+    currency: bool = True  # форматировать результат как деньги
+    note: str = ""  # дисклеймер под результатом
+    relatedServiceSlugs: list = Field(default_factory=list, sa_column=Column(JSON))
+    status: str = "published"  # published|draft
+    updatedAt: datetime = Field(default_factory=utcnow)
+
+
+class StatusModel(SQLModel, table=True):
+    """Настраиваемый статус заявки (4.4). Сидируется из status.py как дефолт;
+    админ может менять метки/цвета/SLA/требование комментария без кода."""
+
+    key: str = Field(primary_key=True)
+    label: str
+    color: str = "gray"  # gray|blue|amber|green|red
+    who: str | None = None  # client|null (кто действует)
+    sla: int | None = None  # рабочих дней
+    commentRequired: bool = False
+    terminal: bool = False
+    sortOrder: int = 0
+
+
+class StatusTransition(SQLModel, table=True):
+    """Разрешённый переход статуса в рамках маршрута (flow). Разные услуги могут
+    ссылаться на разные маршруты — конфигурируется, без кода."""
+
+    id: str = Field(default_factory=lambda: gen_id("st_"), primary_key=True)
+    flow: str = Field(default="default", index=True)  # id маршрута
+    fromKey: str = Field(index=True)
+    toKey: str = ""
+    sortOrder: int = 0

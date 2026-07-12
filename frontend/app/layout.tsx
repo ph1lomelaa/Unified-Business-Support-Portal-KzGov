@@ -22,6 +22,13 @@ export const metadata: Metadata = {
   },
   description:
     "Вся государственная поддержка бизнеса Холдинга «Байтерек» в одном окне.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+  },
 };
 
 export default async function RootLayout({

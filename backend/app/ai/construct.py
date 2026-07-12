@@ -305,3 +305,177 @@ def suggest_branching(db: Session, service_id: str, field_name: str, schema: dic
             pass
 
     return {"rules": _heuristic_rules(field, others), "source": "rules"}
+
+
+# ------------------------------------------------------------- audit_schema
+
+def _referenced_names(expr: str) -> set[str]:
+    import re
+
+    return set(re.findall(r"\{([a-zA-Z0-9_.\[\]]+)\}", expr or ""))
+
+
+def deterministic_schema_issues(schema: dict) -> list[dict]:
+    """Офлайн-аудит схемы формы: ищем типовые «дыры», не полагаясь на AI.
+    severity: error (сломает форму) | warning (скорее всего проблема) | info."""
+    issues: list[dict] = []
+    pages = (schema or {}).get("pages") or []
+    fields = _all_fields(schema)
+    names = {f.get("name") for f in fields if f.get("name")}
+
+    if not pages or not fields:
+        return [{
+            "severity": "error", "field": None,
+            "message": "Форма пустая — нет ни одного поля.",
+            "hint": "Добавьте страницы и поля или воспользуйтесь «Предложить поля».",
+        }]
+
+    # 1. Нет панели БИН/ИИН — почти всем услугам нужен идентификатор заявителя.
+    if not ({"bin", "iin", "bin_iin"} & {str(n).lower() for n in names}):
+        issues.append({
+            "severity": "warning", "field": None,
+            "message": "Нет поля БИН/ИИН заявителя.",
+            "hint": "Вставьте пресет «БИН-панель» — он добавит идентификатор с проверкой формата.",
+        })
+
+    # 2. Нет загрузки документов.
+    if not any(f.get("type") == "file" for f in fields):
+        issues.append({
+            "severity": "warning", "field": None,
+            "message": "В форме нет ни одного поля загрузки документа.",
+            "hint": "Большинству мер поддержки нужны подтверждающие документы — добавьте поле «файл».",
+        })
+
+    # 3. Ни одно поле не обязательно.
+    if not any(f.get("isRequired") for f in fields):
+        issues.append({
+            "severity": "warning", "field": None,
+            "message": "Ни одно поле не помечено обязательным.",
+            "hint": "Отметьте ключевые поля как обязательные, чтобы заявки приходили заполненными.",
+        })
+
+    # 4. Дубли имён полей — сломают сохранение значений.
+    seen: set[str] = set()
+    for f in fields:
+        n = f.get("name")
+        if n in seen:
+            issues.append({
+                "severity": "error", "field": n,
+                "message": f"Дублируется имя поля «{n}».",
+                "hint": "Переименуйте одно из полей — имена должны быть уникальны.",
+            })
+        seen.add(n)
+
+    for f in fields:
+        name = f.get("name")
+        ftype = f.get("type")
+        title = f.get("title") or name
+
+        # 5. Поле с вариантами, но без вариантов и без справочника.
+        if ftype in {"dropdown", "radiogroup", "checkbox", "tagbox"}:
+            has_choices = bool(f.get("choices"))
+            has_url = bool(f.get("choicesByUrl") or f.get("dictionaryCode"))
+            if not has_choices and not has_url:
+                issues.append({
+                    "severity": "error", "field": name,
+                    "message": f"«{title}» — список без вариантов ответа.",
+                    "hint": "Добавьте варианты или привяжите справочник (свойство «Справочник (ЕППБ)»).",
+                })
+
+        # 6. visibleIf/expression ссылается на несуществующее поле — битая ветка.
+        for prop in ("visibleIf", "enableIf", "requiredIf", "expression"):
+            expr = f.get(prop)
+            if isinstance(expr, str) and expr:
+                missing = _referenced_names(expr) - names
+                # {panel...}/{row...} служебные токены пропускаем
+                missing = {m for m in missing if "." not in m and "[" not in m}
+                if missing:
+                    issues.append({
+                        "severity": "error", "field": name,
+                        "message": f"«{title}»: условие ссылается на несуществующее поле: {', '.join(sorted(missing))}.",
+                        "hint": "Проверьте имена полей в условии — возможно, поле переименовано или удалено.",
+                    })
+                if name and name in _referenced_names(expr):
+                    issues.append({
+                        "severity": "error", "field": name,
+                        "message": f"«{title}»: условие циклически ссылается на само поле.",
+                        "hint": "Выберите другое поле-источник для условия.",
+                    })
+
+        if f.get("isRequired") and f.get("visibleIf"):
+            issues.append({
+                "severity": "info", "field": name,
+                "message": f"«{title}» обязательное, но показывается по условию.",
+                "hint": "Проверьте preview обоих сценариев: скрытого и отображаемого поля.",
+            })
+
+        # 7. Расчётное поле должно содержать безопасную арифметическую формулу.
+        if ftype == "expression" and isinstance(f.get("expression"), str):
+            from ..calc_eval import FormulaError, evaluate
+
+            formula = f["expression"]
+            refs = _referenced_names(formula)
+            normalized = formula
+            for ref in refs:
+                normalized = normalized.replace("{" + ref + "}", ref)
+            try:
+                evaluate(normalized, {ref: 1.0 for ref in refs})
+            except FormulaError as exc:
+                issues.append({
+                    "severity": "error", "field": name,
+                    "message": f"«{title}»: некорректная формула ({exc}).",
+                    "hint": "Исправьте формулу в сборщике расчётов перед публикацией.",
+                })
+
+    return issues
+
+
+_AUDIT_SYSTEM = """Ты — методолог форм на портале поддержки бизнеса. Проверь схему формы
+(SurveyJS) на «дыры»: пропущенные обязательные поля, отсутствие идентификатора заявителя,
+отсутствие загрузки документов, списки без вариантов, битые условия visibleIf, нелогичный
+порядок. Схема: {schema}
+Верни строго JSON: {{"issues":[{{"severity","field","message","hint"}}]}}
+severity ∈ error|warning|info; field — имя поля или null; message — коротко что не так;
+hint — что сделать. Максимум 8 пунктов, самое важное первым. Только JSON."""
+
+
+def audit_schema(schema: dict) -> dict:
+    """«Проверь форму на дыры»: список проблем схемы. Claude при ключе, иначе —
+    детерминированные эвристики. Форма ответа одинакова."""
+    schema = schema if isinstance(schema, dict) else {"pages": []}
+    heuristic = deterministic_schema_issues(schema)
+
+    client = get_client()
+    if client:
+        try:
+            resp = client.messages.create(
+                model=settings.ai_model,
+                max_tokens=1100,
+                system=_AUDIT_SYSTEM.format(
+                    schema=json.dumps(schema, ensure_ascii=False)[:6000]
+                ),
+                messages=[{"role": "user", "content": "Проверь форму."}],
+            )
+            data = extract_json(message_text(resp))
+            raw = data.get("issues") if isinstance(data, dict) else None
+            issues = []
+            for it in raw or []:
+                if not isinstance(it, dict) or not it.get("message"):
+                    continue
+                sev = it.get("severity")
+                issues.append({
+                    "severity": sev if sev in {"error", "warning", "info"} else "warning",
+                    "field": it.get("field"),
+                    "message": str(it.get("message")),
+                    "hint": str(it.get("hint") or ""),
+                })
+            if issues:
+                return {"issues": issues[:8], "source": "ai", "ok": False}
+        except Exception:
+            pass
+
+    return {
+        "issues": heuristic[:8],
+        "source": "rules",
+        "ok": len(heuristic) == 0,
+    }

@@ -10,16 +10,16 @@ export type StatusMeta = {
 export const STATUS: Record<string, StatusMeta> = {
   draft: { label: "Черновик", tone: "gray" },
   submitted: { label: "Подана", tone: "blue" },
-  stage2_required: { label: "Требуются расширенные данные", tone: "amber" },
-  stage2_submitted: { label: "Расширенные данные поданы", tone: "blue" },
+  stage2_required: { label: "Нужно добавить сведения", tone: "amber" },
+  stage2_submitted: { label: "Сведения отправлены", tone: "blue" },
   in_review: { label: "На рассмотрении", tone: "blue", sla: 5 },
-  needs_changes: { label: "Требует доработки", tone: "amber" },
+  needs_changes: { label: "Нужно исправить заявку", tone: "amber" },
   resubmitted: { label: "Отправлена повторно", tone: "blue" },
   approved: { label: "Одобрена", tone: "green" },
   contract_signed: { label: "Договор подписан", tone: "green" },
   active: { label: "Субсидирование активно", tone: "green" },
   completed: { label: "Завершена", tone: "green" },
-  rejected: { label: "Отказ", tone: "red" },
+  rejected: { label: "Не одобрена", tone: "red" },
 };
 
 export function statusMeta(key: string): StatusMeta {

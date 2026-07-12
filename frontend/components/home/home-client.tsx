@@ -7,7 +7,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { HeroNavigator, type HeroNavigatorHandle } from "@/components/home/hero-navigator";
-import { FloatingAiAssistant } from "@/components/home/floating-ai-assistant";
 import { IntentJourneys } from "@/components/home/intent-journeys";
 import { FeaturedServices } from "@/components/home/featured-services";
 import { MapTeaser } from "@/components/home/map-teaser";
@@ -39,7 +38,7 @@ const HOLDING_ORG_ID = "baiterek";
 const STEPS = [
   ["01", "Подберите меру", "Опишите задачу или выберите параметры бизнеса в каталоге."],
   ["02", "Проверьте условия", "Система покажет требования, документы и предварительную пригодность."],
-  ["03", "Подайте заявку", "Заполните короткий wizard, подпишите ЭЦП и получите номер заявки."],
+  ["03", "Подайте заявку", "Заполните короткую онлайн-форму, подпишите ЭЦП и получите номер заявки."],
   ["04", "Отследите статус", "Кабинет показывает документы, уведомления и историю действий."],
 ];
 
@@ -103,7 +102,7 @@ export function HomeClient() {
     <>
       <Hero />
 
-      <div className="relative z-10 -mt-20 pb-10">
+      <div className="relative z-10 -mt-8 pb-10">
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
           <div id="navigator" className="scroll-mt-[150px]">
             <HeroNavigator ref={navigatorRef} variant="bridge" />
@@ -151,9 +150,11 @@ export function HomeClient() {
         <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10">
           <SectionHeader title="Институты развития группы «Байтерек»" href="/services" action="Все меры поддержки" />
           <div className="mt-6 overflow-hidden rounded-card border border-border bg-surface shadow-[var(--shadow-card)]">
-            {activeOrgs.map((org) => (
-              <SupportOrgRow key={org.id} org={org} />
-            ))}
+            {orgs.length === 0
+              ? [0, 1, 2, 3].map((i) => <SupportOrgSkeleton key={i} />)
+              : activeOrgs.map((org) => (
+                  <SupportOrgRow key={org.id} org={org} />
+                ))}
           </div>
           {dormantOrgs.length > 0 && <DormantOrgs orgs={dormantOrgs} />}
         </div>
@@ -194,26 +195,34 @@ export function HomeClient() {
           <Faq items={faq} />
         </div>
       </section>
-
-      <FloatingAiAssistant />
     </>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative -mt-[144px] min-h-[60vh] overflow-hidden bg-[#e7f1ea] pt-[144px] text-ink">
-      {/* Мягкий фирменный градиент — светлый, но не белый и не тёмный. */}
-      <div className="absolute inset-0 bg-[linear-gradient(115deg,#d9ece1_0%,#e8f3ec_48%,#f1f7f3_100%)]" />
-      <OrnamentPattern className="text-brand-green opacity-[0.06]" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
-      <div className="relative mx-auto flex min-h-[calc(60vh-144px)] w-full max-w-[1600px] min-w-0 items-center px-4 py-16 sm:px-6 lg:px-10">
-        <div className="max-w-[760px] min-w-0">
-          <h1 className="max-w-full text-[36px] font-extrabold uppercase leading-[1.08] text-ink sm:text-[58px] sm:leading-[1.05] lg:text-[72px]">
-            <span className="block">Все меры поддержки бизнеса</span>
-            <span className="block text-brand-green">— в одном портале</span>
+    <section className="relative -mt-[144px] min-h-[66vh] overflow-hidden bg-[#0c1712] pt-[144px] text-white">
+      {/* Фирменное фото: переговорная с флагом «Байтерек» — фото читается крупнее. */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/hero/boardroom.jpg')" }}
+      />
+      {/* Более мягкий скрим — чтобы фото было видно крупнее, а белый текст читался. */}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,17,13,0.80)_0%,rgba(8,17,13,0.56)_46%,rgba(8,17,13,0.30)_76%,rgba(8,17,13,0.50)_100%)]" />
+      <OrnamentPattern className="text-white opacity-[0.05]" />
+      <div className="relative mx-auto flex min-h-[calc(66vh-144px)] w-full max-w-[1600px] min-w-0 items-center px-4 py-16 sm:px-6 lg:px-10">
+        <div className="w-full max-w-[720px] min-w-0">
+          {/* Официальный, «госсайтовый» стиль: спокойный надзаголовок + чёткий белый заголовок */}
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/70">
+            Институты развития Холдинга «Байтерек»
+          </p>
+          <h1 className="text-left text-[26px] font-bold leading-[1.16] text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.42)] sm:text-[32px] lg:text-[40px]">
+            Все меры поддержки бизнеса в одном портале
           </h1>
-          
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-white/85">
+            Финансирование, субсидии, гарантии и экспортная поддержка — в едином окне.
+            Опишите задачу, и портал подберёт подходящую меру.
+          </p>
         </div>
       </div>
     </section>
@@ -240,6 +249,20 @@ function SupportOrgRow({ org }: { org: SupportOrg }) {
         Все →
       </div>
     </Link>
+  );
+}
+
+function SupportOrgSkeleton() {
+  return (
+    <div className="grid gap-4 border-b border-border p-5 last:border-b-0 sm:grid-cols-[56px_1fr_auto_auto] sm:items-center">
+      <div className="skeleton size-11 rounded-control" />
+      <div>
+        <div className="skeleton h-4 w-2/3" />
+        <div className="skeleton mt-2 h-3 w-1/3" />
+      </div>
+      <div className="skeleton h-6 w-20" />
+      <div className="skeleton h-4 w-12" />
+    </div>
   );
 }
 
@@ -330,6 +353,18 @@ function NewsCard({ item, large = false }: { item: NewsItem; large?: boolean }) 
 
 function Faq({ items }: { items: PortalFaqItem[] }) {
   const [open, setOpen] = React.useState("");
+  if (items.length === 0) {
+    return (
+      <div className="mt-6 grid gap-x-8 md:grid-cols-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="border-b border-border py-4">
+            <div className="skeleton h-4 w-3/4" />
+            <div className="skeleton mt-3 h-3 w-11/12" />
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="mt-6 grid gap-x-8 md:grid-cols-2">
       {items.map(({ question, answer }, i) => {

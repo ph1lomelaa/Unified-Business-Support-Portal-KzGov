@@ -49,7 +49,7 @@ export function Stage2Panel({ app }: { app: AppDetail }) {
 
   async function submit() {
     if (!model.validate(true, true)) {
-      toast.error("Заполните обязательные поля этапа 2");
+      toast.error("Заполните обязательные дополнительные поля");
       return;
     }
     setSubmitting(true);
@@ -59,10 +59,10 @@ export function Stage2Panel({ app }: { app: AppDetail }) {
         method: "POST",
         json: { answers, calc, signedBy: app.company?.director ?? null },
       });
-      toast.success("Этап 2 завершён — заявка отправлена на рассмотрение");
+      toast.success("Дополнительные сведения отправлены — заявка ушла на рассмотрение");
       router.refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось отправить этап 2");
+      toast.error(e instanceof Error ? e.message : "Не удалось отправить дополнительные сведения");
       setSubmitting(false);
     }
   }
@@ -77,7 +77,7 @@ export function Stage2Panel({ app }: { app: AppDetail }) {
         />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-st-amber">
-            Этап 2 · Расширенные данные и документы
+            Дополнительные сведения и документы
           </p>
           <p className="mt-1 text-[13px] text-fg">
             Первичная заявка принята. Дозаполните расширенные сведения — после
@@ -109,7 +109,7 @@ export function Stage2Panel({ app }: { app: AppDetail }) {
             ) : (
               <>
                 <ShieldCheck size={20} strokeWidth={1.75} />
-                Отправить этап 2 на рассмотрение
+                Отправить на рассмотрение
               </>
             )}
           </Button>

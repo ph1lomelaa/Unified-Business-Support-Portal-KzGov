@@ -57,7 +57,7 @@ function sourceRows(newsImportedAt: string | null): SourceRow[] {
     contractHref: "/api-docs#/Карта/map_projects_api_v1_map_projects_get",
   },
   {
-    section: "Аналитика ДО",
+    section: "Аналитика дочерних компаний",
     source: "Публичные отчёты организаций",
     access: "Живые ссылки на опубликованные материалы",
     mode: "Живой импорт",

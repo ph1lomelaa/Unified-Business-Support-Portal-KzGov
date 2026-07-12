@@ -7,6 +7,7 @@ from pathlib import Path
 from time import sleep
 
 import httpx
+from sqlalchemy import case
 from sqlmodel import Session, select
 
 from ..ai.generate import AiError, generate_application_example, generate_service
@@ -103,16 +104,12 @@ PIPELINE_STAGES = [
 
 
 def ensure_official_sources(db: Session) -> None:
+    # Seed missing sources only — never overwrite existing rows, so admin edits
+    # in the «Источники» console (baseUrl, schedule, status, ...) persist and are
+    # not reverted to the code seed on the next call (Фаза 1.5, no-code).
     changed = False
     for row in SOURCE_SEEDS:
-        source = db.get(OfficialSource, row["id"])
-        if source:
-            for key, value in row.items():
-                if getattr(source, key) != value and key not in {"status"}:
-                    setattr(source, key, value)
-                    changed = True
-            db.add(source)
-        else:
+        if db.get(OfficialSource, row["id"]) is None:
             db.add(OfficialSource(**row))
             changed = True
     if changed:
@@ -532,8 +529,11 @@ def imported_service_to_public(db: Session, item: ImportedService) -> dict:
         if item.serviceSlug
         else None
     )
+    # Документы показываем первым блоком (сверху), затем остальные доказательства.
     evidence = db.exec(
-        select(ExtractedEvidence).where(ExtractedEvidence.importedServiceId == item.id)
+        select(ExtractedEvidence)
+        .where(ExtractedEvidence.importedServiceId == item.id)
+        .order_by(case((ExtractedEvidence.kind == "document", 0), else_=1))
     ).all()
     payload = item.draftPayload or {}
     coverage = {

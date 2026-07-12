@@ -10,6 +10,7 @@ import {
   Settings2,
   Loader2,
   ArrowRight,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signCmsBase64, NCALAYER_NOT_FOUND } from "@/lib/ncalayer";
@@ -64,6 +65,11 @@ export default function LoginPage() {
     }
   }
 
+  function egovLogin() {
+    const target = `/api/auth/egov/start?next=${encodeURIComponent(next || "/cabinet")}`;
+    window.location.href = target;
+  }
+
   async function demo(role: string) {
     setBusy(role);
     try {
@@ -90,14 +96,28 @@ export default function LoginPage() {
             Войдите в личный кабинет
           </h2>
           <p className="mt-2 text-[14px] text-muted">
-            По ЭЦП через NCALayer или демо-ролью для конкурсного просмотра.
+            Через eGov mobile, ЭЦП NCALayer или демо-ролью для конкурсного просмотра.
           </p>
+
+          <Button
+            onClick={egovLogin}
+            disabled={busy !== null}
+            size="lg"
+            className="mt-7 w-full justify-between px-5 text-[14px] font-semibold"
+          >
+            <span className="flex items-center gap-2">
+              <Smartphone size={18} strokeWidth={1.75} />
+              Войти через eGov / mobile
+            </span>
+            <ArrowRight size={18} strokeWidth={2} />
+          </Button>
 
           <Button
             onClick={signEds}
             disabled={busy !== null}
             size="lg"
-            className="mt-7 w-full justify-between px-5 text-[14px] font-semibold"
+            variant="outline"
+            className="mt-3 w-full justify-between px-5 text-[14px] font-semibold"
           >
             {busy === "eds" ? (
               <span className="flex items-center gap-2">

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -28,6 +28,7 @@ from ..session import require_role
 from ..status import (
     STATUS,
     can_transition,
+    next_statuses,
     requires_comment,
     sla_progress,
     status_label,
@@ -76,6 +77,8 @@ def list_queue(
     status: str | None = None,
     service: str | None = None,
     org: str | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ):
     user = require_role("admin", "analyst")(request)
     stmt = (
@@ -96,7 +99,9 @@ def list_queue(
     if service:
         stmt = stmt.where(Application.serviceId == service)
 
-    rows = db.exec(stmt.order_by(Application.updatedAt.desc())).all()
+    rows = db.exec(
+        stmt.order_by(Application.updatedAt.desc()).offset(offset).limit(limit)
+    ).all()
     out = []
     for a, s, o, c in rows:
         out.append(
@@ -128,8 +133,9 @@ def get_detail(
     if not a:
         raise HTTPException(404, "Заявка не найдена")
     s = db.get(Service, a.serviceId)
-    if user.role == "analyst" and user.orgId and (not s or s.orgId != user.orgId):
-        raise HTTPException(403, "Недостаточно прав для заявки другой организации")
+    if user.role == "analyst":
+        if not user.orgId or not s or s.orgId != user.orgId:
+            raise HTTPException(403, "Недостаточно прав для заявки другой организации")
     o = db.get(Organization, s.orgId) if s else None
     c = db.get(Company, a.companyBin)
     events = db.exec(
@@ -137,7 +143,6 @@ def get_detail(
         .where(ApplicationEvent.appId == a.id)
         .order_by(ApplicationEvent.createdAt)
     ).all()
-    nxt = STATUS.get(a.status)
     return {
         "id": a.id,
         "number": a.number,
@@ -158,7 +163,7 @@ def get_detail(
         if s else None,
         "org": {"shortName": o.shortName, "name": o.name, "color": o.color, "logo": o.logo or None}
         if o else None,
-        "nextStatuses": list(nxt.next) if nxt else [],
+        "nextStatuses": next_statuses(a.status),
         "events": [
             {
                 "id": e.id, "fromStatus": e.fromStatus, "toStatus": e.toStatus,
@@ -189,9 +194,9 @@ def transition(
         raise HTTPException(400, "Для этого действия требуется комментарий")
 
     user = require_role("admin", "analyst")(request)
-    if user.role == "analyst" and user.orgId:
+    if user.role == "analyst":
         service = db.get(Service, app.serviceId)
-        if not service or service.orgId != user.orgId:
+        if not user.orgId or not service or service.orgId != user.orgId:
             raise HTTPException(403, "Недостаточно прав для заявки другой организации")
     actor = "manager" if user and user.role in ("analyst", "admin") else "system"
     src = app.status

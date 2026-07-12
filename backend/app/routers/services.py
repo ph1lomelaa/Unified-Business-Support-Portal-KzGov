@@ -100,6 +100,8 @@ def list_services(
     region: str | None = Query(None),
     q: str | None = Query(None),
     include_drafts: bool = Query(False),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=500),
 ):
     rows = _base_rows(db, org, include_drafts)
     if category:
@@ -110,7 +112,7 @@ def list_services(
         if _matches_tags(s, bizSize, industry, region, q)
     ]
     result.sort(key=lambda r: r["title"])
-    return result
+    return result[offset : offset + limit]
 
 
 @router.get("/facets")
@@ -139,7 +141,7 @@ def get_service(slug: str, db: Session = Depends(get_session)):
     row = db.exec(
         select(Service, Organization)
         .join(Organization, Service.orgId == Organization.id, isouter=True)
-        .where(Service.slug == slug)
+        .where(Service.slug == slug, Service.status == "published")
     ).first()
     if not row:
         raise HTTPException(status_code=404, detail="Услуга не найдена")

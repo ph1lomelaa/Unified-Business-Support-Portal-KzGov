@@ -116,6 +116,7 @@ export default function AdminImportsPage() {
   const [offset, setOffset] = React.useState(0);
   const [newsData, setNewsData] = React.useState<NewsPayload | null>(null);
   const [selectedNews, setSelectedNews] = React.useState<string[]>([]);
+  const [view, setView] = React.useState<"services" | "news">("services");
 
   const load = React.useCallback((sourceId = selectedSource, nextOffset = offset) => {
     const qs = new URLSearchParams({ offset: String(nextOffset), limit: String(PAGE_SIZE) });
@@ -234,20 +235,32 @@ export default function AdminImportsPage() {
 
       {error && <ErrorBanner className="mt-6" message={error} onRetry={() => load()} />}
 
-      <NewsImportPanel
-        data={newsData}
-        selected={selectedNews}
-        running={runningNews}
-        onRun={runNewsImport}
-        onPublish={publishNews}
-        onToggle={(id) =>
-          setSelectedNews((current) =>
-            current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-          )
-        }
-      />
+      {/* Отдельные вкладки: услуги (по умолчанию, слева) и новости — импорт услуг больше не под новостями */}
+      <div className="mt-6 inline-flex rounded-control border border-border bg-surface p-1">
+        <ViewTab active={view === "services"} onClick={() => setView("services")}>
+          Услуги из источников
+        </ViewTab>
+        <ViewTab active={view === "news"} onClick={() => setView("news")}>
+          Новости{newsData?.summary.draft ? ` · ${newsData.summary.draft} черновиков` : ""}
+        </ViewTab>
+      </div>
 
-      {data && (
+      {view === "news" && (
+        <NewsImportPanel
+          data={newsData}
+          selected={selectedNews}
+          running={runningNews}
+          onRun={runNewsImport}
+          onPublish={publishNews}
+          onToggle={(id) =>
+            setSelectedNews((current) =>
+              current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+            )
+          }
+        />
+      )}
+
+      {view === "services" && data && (
         <div className="mt-6 grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="xl:sticky xl:top-5 xl:self-start">
             <SourceNavigation
@@ -261,6 +274,12 @@ export default function AdminImportsPage() {
           </aside>
 
           <section className="min-w-0">
+            {/* Панель просмотра выбранной услуги — сверху, чтобы открывалась сразу
+                при клике «Просмотреть / обработать», а не в самом низу под списком. */}
+            {active && (
+              <ServiceReview service={active} drafting={draftingId === active.id} onDraft={() => createDraft(active.id)} />
+            )}
+
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-[20px] font-semibold text-ink">{currentSource?.name ?? "Все источники"}</h2>
@@ -284,14 +303,25 @@ export default function AdminImportsPage() {
             </div>
 
             <Pagination pagination={data.pagination} onChange={changePage} />
-
-            {active && (
-              <ServiceReview service={active} drafting={draftingId === active.id} onDraft={() => createDraft(active.id)} />
-            )}
           </section>
         </div>
       )}
     </div>
+  );
+}
+
+function ViewTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-[8px] px-4 py-2 text-[13px] font-semibold transition-colors",
+        active ? "bg-brand-green text-white" : "text-fg hover:bg-bg"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -450,13 +480,45 @@ function Pagination({ pagination, onChange }: { pagination: Payload["pagination"
 
 function ServiceReview({ service, drafting, onDraft }: { service: ImportedService; drafting: boolean; onDraft: () => void }) {
   const [tab, setTab] = React.useState<"evidence" | "form" | "example">("evidence");
-  return <Card className="mt-7 overflow-hidden"><CardBody>
+  return <Card className="mb-7 overflow-hidden"><CardBody>
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[13px] font-semibold text-muted">{service.organization}</p><h2 className="mt-1 text-[21px] font-semibold text-ink">{service.title}</h2><p className="mt-1 text-[13px] text-muted">AI confidence {Math.round(service.confidence * 100)}%</p></div><div className="flex flex-wrap gap-2">{service.serviceId ? <Link href={`/admin/services/${service.serviceId}`} className="inline-flex h-10 items-center gap-2 rounded-control border border-border px-3 text-[13px] font-medium text-ink hover:border-ink">Открыть черновик <ArrowRight size={15} /></Link> : <button type="button" disabled={drafting} onClick={onDraft} className="inline-flex h-10 items-center gap-2 rounded-control bg-accent px-3 text-[13px] font-semibold text-white hover:bg-accent-hover disabled:opacity-60"><Sparkles size={16} />Создать черновик</button>}<a href={service.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-control border border-border px-3 text-[13px] font-medium text-ink hover:border-ink"><ExternalLink size={15} />Источник</a></div></div>
-    <div className="mt-6 flex gap-1 border-b border-border"><ReviewTab active={tab === "evidence"} onClick={() => setTab("evidence")} icon={FileSearch}>Доказательства</ReviewTab><ReviewTab active={tab === "form"} onClick={() => setTab("form")} icon={FormInput}>Форма</ReviewTab><ReviewTab active={tab === "example"} onClick={() => setTab("example")} icon={CheckCircle2}>Пример заявки</ReviewTab></div>
-    {tab === "evidence" && <EvidenceTable evidence={service.evidence} />}
-    {tab === "form" && <FormPreview form={service.form} />}
-    {tab === "example" && <ApplicationExample example={service.applicationExample} />}
+
+    {/* Ключевые извлечённые параметры (Сумма, срок, ставка …) — отдельным разделом слева */}
+    <div className="mt-6 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="lg:sticky lg:top-5 lg:self-start">
+        <KeyFacts evidence={service.evidence} />
+      </aside>
+      <div className="min-w-0">
+        <div className="flex gap-1 border-b border-border"><ReviewTab active={tab === "evidence"} onClick={() => setTab("evidence")} icon={FileSearch}>Доказательства</ReviewTab><ReviewTab active={tab === "form"} onClick={() => setTab("form")} icon={FormInput}>Форма</ReviewTab><ReviewTab active={tab === "example"} onClick={() => setTab("example")} icon={CheckCircle2}>Пример заявки</ReviewTab></div>
+        {tab === "evidence" && <EvidenceTable evidence={service.evidence} />}
+        {tab === "form" && <FormPreview form={service.form} />}
+        {tab === "example" && <ApplicationExample example={service.applicationExample} />}
+      </div>
+    </div>
   </CardBody></Card>;
+}
+
+function KeyFacts({ evidence }: { evidence: Evidence[] }) {
+  if (!evidence.length) {
+    return (
+      <div className="rounded-card border border-border bg-bg p-4 text-[13px] text-muted">
+        Ключевые параметры появятся после AI-извлечения.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-card border border-border bg-bg p-4">
+      <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-brand-green">Ключевые параметры</p>
+      <dl className="mt-3 space-y-3">
+        {evidence.map((item) => (
+          <div key={`${item.kind}-${item.label}`} className="border-b border-border/70 pb-3 last:border-b-0 last:pb-0">
+            <dt className="text-[12px] text-muted">{item.label}</dt>
+            <dd className="mt-0.5 text-[14px] font-semibold leading-snug text-ink">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 function ReviewTab({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: typeof FileSearch; children: React.ReactNode }) { return <button type="button" onClick={onClick} className={cn("flex h-10 items-center gap-2 border-b-2 px-3 text-[13px] font-medium", active ? "border-brand-green text-brand-green" : "border-transparent text-muted hover:text-ink")}><Icon size={15} />{children}</button>; }

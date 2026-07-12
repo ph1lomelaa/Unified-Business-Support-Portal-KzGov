@@ -58,6 +58,28 @@ def _json_safe(obj: Any) -> Any:
         return {"repr": str(obj)}
 
 
+_SENSITIVE_KEYS = {
+    "iin", "bin", "companybin", "director", "signedby", "password",
+    "token", "accesstoken", "refreshtoken", "authorization", "secret",
+    "authsecret", "apikey", "api_key", "document", "filecontent",
+}
+
+
+def redact_payload(obj: Any, key: str = "") -> Any:
+    """Return a log-safe copy; adapters still receive the original payload."""
+    normalized = key.replace("_", "").lower()
+    if normalized in _SENSITIVE_KEYS:
+        value = str(obj) if obj is not None else ""
+        if normalized in {"iin", "bin", "companybin"} and len(value) >= 4:
+            return "*" * (len(value) - 4) + value[-4:]
+        return "***"
+    if isinstance(obj, dict):
+        return {k: redact_payload(v, str(k)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redact_payload(v, key) for v in obj]
+    return obj
+
+
 def get_operation(db: Session, system_id: str, code: str) -> IntegrationOperation | None:
     return db.exec(
         select(IntegrationOperation).where(
@@ -99,6 +121,8 @@ def call(
         prior = db.exec(
             select(IntegrationCall).where(
                 IntegrationCall.idempotencyKey == idempotency_key,
+                IntegrationCall.systemId == system_id,
+                IntegrationCall.operation == operation_code,
                 IntegrationCall.status == "success",
             )
         ).first()
@@ -147,8 +171,8 @@ def call(
             status="success",
             attempts=attempts,
             latencyMs=latency,
-            requestPayload=_json_safe(payload),
-            responsePayload=_json_safe(data),
+            requestPayload=_json_safe(redact_payload(payload)),
+            responsePayload=_json_safe(redact_payload(data)),
             application=application,
         )
         db.add(row)
@@ -174,7 +198,7 @@ def call(
         status="error",
         attempts=attempts,
         latencyMs=latency,
-        requestPayload=_json_safe(payload),
+        requestPayload=_json_safe(redact_payload(payload)),
         responsePayload={"error": last_error},
         application=application,
     )

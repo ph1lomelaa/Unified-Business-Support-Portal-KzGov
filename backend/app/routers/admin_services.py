@@ -16,11 +16,12 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, ConfigDict, Field as PydanticField
 from sqlmodel import Session, func, select
 
 from ..audit_log import record_audit
+from ..ai.construct import deterministic_schema_issues
 from ..db import get_session
 from ..models import Application, FormSchema, Organization, Service
 from ..session import SessionUser, require_role
@@ -57,7 +58,9 @@ class UpdateCardBody(BaseModel):
 
 
 class SaveFormBody(BaseModel):
-    schema: dict
+    model_config = ConfigDict(populate_by_name=True)
+
+    formSchema: dict = PydanticField(alias="schema")
     author: str = "Аналитик"
 
 
@@ -93,6 +96,23 @@ def _latest_version(db: Session, service_id: str) -> FormSchema | None:
         .where(FormSchema.serviceId == service_id)
         .order_by(FormSchema.version.desc())
     ).first()
+
+
+def _schema_fields(schema: dict) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+
+    def walk(elements):
+        for element in elements or []:
+            if not isinstance(element, dict):
+                continue
+            if element.get("type") == "panel":
+                walk(element.get("elements"))
+            elif element.get("name"):
+                out[str(element["name"])] = element
+
+    for page in (schema or {}).get("pages", []) or []:
+        walk(page.get("elements"))
+    return out
 
 
 def _load_form_preset(preset: str | None, title: str) -> tuple[str | None, dict]:
@@ -148,6 +168,8 @@ def list_services(
     request: Request,
     db: Session = Depends(get_session),
     org: str | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
 ):
     user = require_role("admin", "analyst")(request)
     stmt = select(Service, Organization).join(
@@ -159,7 +181,7 @@ def list_services(
         stmt = stmt.where(Service.orgId == user.orgId)
     elif org:
         stmt = stmt.where(Service.orgId == org)
-    rows = db.exec(stmt).all()
+    rows = db.exec(stmt.offset(offset).limit(limit)).all()
     result = [_registry_row(db, s, o) for (s, o) in rows]
     result.sort(key=lambda r: r["updatedAt"], reverse=True)
     return result
@@ -309,7 +331,7 @@ def save_form(
     form = FormSchema(
         serviceId=service_id,
         version=next_version,
-        schema=body.schema,
+        schema=body.formSchema,
         isActive=False,
         author=body.author,
     )
@@ -327,11 +349,48 @@ def save_form(
             "title": service.title,
             "version": next_version,
             "author": body.author,
-            "pages": len(body.schema.get("pages", [])) if isinstance(body.schema, dict) else 0,
+            "pages": len(body.formSchema.get("pages", [])),
         },
     )
     db.commit()
     return {"version": next_version}
+
+
+@router.get("/{service_id}/versions/compare")
+def compare_versions(
+    service_id: str,
+    request: Request,
+    fromVersion: int = Query(..., ge=1),
+    toVersion: int = Query(..., ge=1),
+    db: Session = Depends(get_session),
+):
+    user = require_role("admin", "analyst")(request)
+    service = db.get(Service, service_id)
+    if not service:
+        raise HTTPException(404, "Услуга не найдена")
+    _assert_service_access(user, service)
+    versions = db.exec(
+        select(FormSchema).where(
+            FormSchema.serviceId == service_id,
+            FormSchema.version.in_([fromVersion, toVersion]),
+        )
+    ).all()
+    by_version = {version.version: version for version in versions}
+    if fromVersion not in by_version or toVersion not in by_version:
+        raise HTTPException(404, "Одна из версий не найдена")
+    before = _schema_fields(by_version[fromVersion].schema)
+    after = _schema_fields(by_version[toVersion].schema)
+    return {
+        "fromVersion": fromVersion,
+        "toVersion": toVersion,
+        "added": sorted(after.keys() - before.keys()),
+        "removed": sorted(before.keys() - after.keys()),
+        "changed": sorted(
+            name for name in before.keys() & after.keys() if before[name] != after[name]
+        ),
+        "pagesBefore": len((by_version[fromVersion].schema or {}).get("pages", [])),
+        "pagesAfter": len((by_version[toVersion].schema or {}).get("pages", [])),
+    }
 
 
 @router.post("/{service_id}/publish")
@@ -352,14 +411,28 @@ def publish(
     if not versions:
         raise HTTPException(400, "Нет ни одной версии формы")
     target = body.version or max(v.version for v in versions)
+    target_version = next((v for v in versions if v.version == target), None)
+    if not target_version:
+        raise HTTPException(404, f"Версия {target} не найдена")
+    blocking = [
+        issue
+        for issue in deterministic_schema_issues(target_version.schema)
+        if issue.get("severity") == "error"
+    ]
+    if blocking:
+        raise HTTPException(
+            422,
+            {
+                "message": "Форма содержит ошибки и не может быть опубликована",
+                "issues": blocking,
+            },
+        )
     found = False
     for v in versions:
         active = v.version == target
         v.isActive = active
         db.add(v)
         found = found or active
-    if not found:
-        raise HTTPException(404, f"Версия {target} не найдена")
     service.status = "published"
     _touch(service)
     db.add(service)

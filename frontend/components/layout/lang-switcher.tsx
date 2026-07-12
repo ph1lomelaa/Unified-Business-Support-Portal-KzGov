@@ -18,7 +18,7 @@ export function LangSwitcher({ onDark = false }: { onDark?: boolean }) {
       ariaLabel={t("lang.switch")}
       allowClear={false}
       options={(["ru", "kk"] as const).map((item) => ({ value: item, label: LABEL[item] }))}
-      className={onDark ? "h-11 min-w-20 border-white/25 bg-white text-ink" : "h-11 min-w-20"}
+      className={onDark ? "h-11 min-w-20 border-white/25 bg-transparent text-white hover:border-white" : "h-11 min-w-20"}
     />
   );
 }

@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  DatabaseZap,
   PlayCircle,
   RefreshCw,
   Save,

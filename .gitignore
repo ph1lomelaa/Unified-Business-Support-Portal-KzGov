@@ -15,3 +15,5 @@ backend/storage/
 frontend/.env.local
 .claude
 .pytest_cache
+docs/
+Makefile

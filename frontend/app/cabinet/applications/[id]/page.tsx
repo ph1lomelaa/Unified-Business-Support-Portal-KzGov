@@ -45,7 +45,7 @@ export default async function ApplicationDetailPage({
             </p>
           </div>
         </div>
-        <StatusChip status={app.status} />
+        <StatusChip status={app.status} label={app.statusLabel} />
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_300px]">

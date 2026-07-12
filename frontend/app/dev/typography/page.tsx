@@ -134,9 +134,7 @@ export default function TypographyPage() {
         <div className="flex flex-wrap gap-2">
           <Chip tone="gray">Черновик</Chip>
           <Chip tone="blue">Подана</Chip>
-          <Chip tone="blue" pulse>
-            На рассмотрении
-          </Chip>
+          <Chip tone="blue">На рассмотрении</Chip>
           <Chip tone="amber">Требует доработки</Chip>
           <Chip tone="green">Одобрена</Chip>
           <Chip tone="red">Отказ</Chip>

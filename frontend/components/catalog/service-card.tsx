@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Clock } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import type { ServiceCard as ServiceCardType } from "@/lib/types";
 import { OrgLogo } from "@/components/org-logo";
 import { useI18n } from "@/i18n/provider";
@@ -40,8 +40,7 @@ export function ServiceCard({ service }: { service: ServiceCardType }) {
       </div>
 
       {service.status === "published" && (
-        <span className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-st-green-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.03em] text-st-green">
-          <span className="size-1.5 rounded-full bg-st-green" />
+        <span className="mt-3 inline-flex w-fit items-center rounded-full bg-st-green-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.03em] text-st-green">
           Приём заявок
         </span>
       )}
@@ -68,8 +67,7 @@ export function ServiceCard({ service }: { service: ServiceCardType }) {
           <span className="rounded-control border border-gold/40 bg-gold/10 px-2 py-0.5 font-medium text-ink">
           {categoryKey ? t(categoryKey) : service.category}
         </span>
-        <span className="flex items-center gap-1">
-          <Clock size={14} strokeWidth={1.75} />
+        <span>
           {service.reviewDays} {t("common.workDays")}
         </span>
       </div>

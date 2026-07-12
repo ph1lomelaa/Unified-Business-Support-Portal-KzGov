@@ -6,7 +6,6 @@ import { CircleMarker, GeoJSON, MapContainer, Pane, Popup, Tooltip, useMap } fro
 import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { InfoIcon } from "lucide-react";
 
 type Region = {
   id: string;
@@ -82,6 +81,7 @@ export function MapTeaserClient() {
   const [regions, setRegions] = React.useState<Region[]>([]);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [geoJson, setGeoJson] = React.useState<Adm1GeoJson | null>(null);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     api<Payload>("/api/v1/map/projects")
@@ -92,6 +92,9 @@ export function MapTeaserClient() {
       .catch(() => {
         setRegions([]);
         setProjects([]);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
 
@@ -128,9 +131,9 @@ export function MapTeaserClient() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <MapStat value={projects.length.toLocaleString("ru-RU")} label="проектов" />
-            <MapStat value={`${Math.round(totalAmount / 1_000_000_000)} млрд ₸`} label="финансирование" />
-            <MapStat value={totalJobs.toLocaleString("ru-RU")} label="раб. мест" />
+            <MapStat value={loading ? "..." : projects.length.toLocaleString("ru-RU")} label="проектов" />
+            <MapStat value={loading ? "..." : `${Math.round(totalAmount / 1_000_000_000)} млрд ₸`} label="финансирование" />
+            <MapStat value={loading ? "..." : totalJobs.toLocaleString("ru-RU")} label="раб. мест" />
           </div>
         </div>
         <div className="relative bg-[#EAF1EE]">
@@ -215,10 +218,9 @@ function DemoDataBadge() {
   return (
     <Link
       href="/sources"
-      className="group relative inline-flex shrink-0 items-center gap-1.5 rounded-control border border-st-amber-bg bg-st-amber-bg px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.03em] text-st-amber hover:border-st-amber"
+      className="group relative inline-flex shrink-0 items-center rounded-control border border-st-amber-bg bg-st-amber-bg px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.03em] text-st-amber hover:border-st-amber"
     >
       Демо-данные
-      <InfoIcon size={12} strokeWidth={2} />
       <span className="pointer-events-none absolute left-0 top-full z-[1000] mt-2 hidden w-[300px] rounded-control border border-border bg-white p-3 text-left text-[12px] font-normal normal-case leading-relaxed tracking-normal text-fg shadow-[var(--shadow-pop)] group-hover:block">
         В демо-версии проекты карты имитируют подключение к ИС Аналитического центра через ЕИШ.
       </span>

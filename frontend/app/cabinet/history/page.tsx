@@ -86,7 +86,7 @@ export default function HistoryPage() {
                     <span className="shrink-0 text-[12px] text-muted">{dateTimeRu(item.createdAt)}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <StatusChip status={item.toStatus} />
+                    <StatusChip status={item.toStatus} label={item.toLabel} />
                     {item.fromStatus && <span className="text-[12px] text-muted">из статуса {item.fromStatus}</span>}
                   </div>
                   {item.comment && (

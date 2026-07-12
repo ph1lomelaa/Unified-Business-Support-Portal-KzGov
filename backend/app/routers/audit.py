@@ -54,7 +54,8 @@ def list_audit_events(
     ]
     return {
         "events": rows,
-        "actions": sorted({event.action for event in db.exec(select(AuditLog.action)).all()}),
+        # exec() of a single-column select yields scalar strings, not rows.
+        "actions": sorted(set(db.exec(select(AuditLog.action)).all())),
         "summary": {
             "events": len(rows),
             "aiEvents": sum(1 for item in rows if item["action"] == "ai.generation_used"),

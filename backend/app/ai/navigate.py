@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import json
 import re
+import time
 
 from sqlmodel import Session, select
 
 from ..config import settings
 from ..models import Organization, Service
 from .client import extract_json, get_client, message_text
+from .retrieval import keyword_score
 
 SYSTEM_PROMPT = """Ты — навигатор портала поддержки бизнеса Казахстана (холдинг «Байтерек»).
 Вот каталог услуг (JSON): {catalog}
@@ -24,6 +26,15 @@ SYSTEM_PROMPT = """Ты — навигатор портала поддержки
 Правила: максимум 3 рекомендации; только id из каталога; не выдумывай условий;
 если запрос не про бизнес-поддержку — пустой массив и вежливое clarify.
 Отвечай на языке запроса (русский/казахский). Только JSON, без пояснений."""
+
+_CACHE_TTL = 60 * 15
+_NAV_CACHE: dict[str, tuple[float, dict]] = {}
+
+WARMUP_QUERIES = [
+    "Нужны деньги на закуп КРС в Костанайской области",
+    "Хочу застраховать экспортный контракт",
+    "Кредит на расширение производственного цеха",
+]
 
 
 def _catalog(db: Session) -> list[dict]:
@@ -68,6 +79,12 @@ def _resolve(db: Session, service_id: str) -> dict | None:
 
 
 def navigate(db: Session, query: str) -> dict:
+    cache_key = re.sub(r"\s+", " ", (query or "").strip().lower())
+    now = time.time()
+    cached = _NAV_CACHE.get(cache_key)
+    if cached and cached[0] > now:
+        return {**cached[1], "cached": True}
+
     catalog = _catalog(db)
     client = get_client()
 
@@ -84,51 +101,52 @@ def navigate(db: Session, query: str) -> dict:
             for r in (data.get("recommendations") or [])[:3]:
                 svc = _resolve(db, r.get("serviceId", ""))
                 if svc:
-                    recs.append({"service": svc, "reason": r.get("reason", "")})
+                    recs.append({
+                        "service": svc,
+                        "reason": r.get("reason", ""),
+                        "evidence": (svc.get("conditions") or [])[:3],
+                    })
             if recs or data.get("clarify"):
-                return {
+                result = {
                     "recommendations": recs,
                     "clarify": data.get("clarify"),
                     "source": "ai",
+                    "cached": False,
                 }
+                _NAV_CACHE[cache_key] = (now + _CACHE_TTL, result)
+                return result
         except Exception:
             pass  # fall through to keyword match
 
-    return _keyword_fallback(db, query, catalog)
+    result = _keyword_fallback(db, query, catalog)
+    result["cached"] = False
+    _NAV_CACHE[cache_key] = (now + _CACHE_TTL, result)
+    return result
 
 
-_WORD = re.compile(r"[а-яёa-zА-ЯЁA-Z0-9]{3,}", re.UNICODE)
-
-# hint words -> tags/categories, to make the offline fallback feel smart
-_HINTS: dict[str, list[str]] = {
-    "скот": ["agro"], "коров": ["agro"], "живот": ["agro"], "ферм": ["agro"],
-    "агро": ["agro"], "поле": ["agro"], "село": ["agro"],
-    "экспорт": ["kazakhexport-insurance"], "контракт": ["kazakhexport-insurance"],
-    "субсид": ["subsidy"], "ставк": ["subsidy"], "процент": ["subsidy"],
-    "гаранти": ["guarantee"], "залог": ["guarantee"],
-    "завод": ["manufacturing"], "цех": ["manufacturing"], "производ": ["manufacturing"],
-    "ипотек": ["kzhk-mortgage-subsidy"], "недвиж": ["kzhk-mortgage-subsidy"],
-}
+def warmup_navigation(db: Session) -> dict:
+    warmed = []
+    for q in WARMUP_QUERIES:
+        result = navigate(db, q)
+        warmed.append(
+            {
+                "query": q,
+                "source": result.get("source"),
+                "recommendations": len(result.get("recommendations") or []),
+            }
+        )
+    return {"warmed": warmed, "cacheSize": len(_NAV_CACHE)}
 
 
 def _keyword_fallback(db: Session, query: str, catalog: list[dict]) -> dict:
-    q = query.lower()
-    words = set(_WORD.findall(q))
-    boosts: set[str] = set()
-    for stem, targets in _HINTS.items():
-        if stem in q:
-            boosts.update(targets)
-
     scored: list[tuple[int, dict]] = []
     for c in catalog:
-        hay = f"{c['title']} {c['summary']} {json.dumps(c['tags'], ensure_ascii=False)} {c['category']}".lower()
-        score = sum(1 for w in words if w in hay)
-        if c["slug"] in boosts or c["category"] in boosts:
-            score += 3
-        tags = c.get("tags") or {}
-        for ind in tags.get("industries", []):
-            if ind in boosts:
-                score += 3
+        score = keyword_score(
+            query,
+            [c["title"], c["summary"], c.get("tags"), c["category"]],
+            boosts=[c["slug"], c["category"]],
+            tags=c.get("tags") or {},
+        )
         if score > 0:
             scored.append((score, c))
 
@@ -142,7 +160,11 @@ def _keyword_fallback(db: Session, query: str, catalog: list[dict]) -> dict:
             reason = c["summary"] or (
                 f"{cond['label']}: {cond['value']}" if cond else ""
             )
-            recs.append({"service": svc, "reason": reason})
+            recs.append({
+                "service": svc,
+                "reason": reason,
+                "evidence": (svc.get("conditions") or [])[:3],
+            })
 
     clarify = None
     if not recs:

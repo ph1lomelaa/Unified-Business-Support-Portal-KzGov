@@ -33,11 +33,11 @@ STATUS: dict[str, StatusDef] = {
         "submitted", "Подана", "blue", next=("in_review", "stage2_required")
     ),
     "stage2_required": StatusDef(
-        "stage2_required", "Требуются расширенные данные", "amber",
+        "stage2_required", "Нужно добавить сведения", "amber",
         who="client", next=("stage2_submitted",),
     ),
     "stage2_submitted": StatusDef(
-        "stage2_submitted", "Расширенные данные поданы", "blue",
+        "stage2_submitted", "Сведения отправлены", "blue",
         next=("in_review",),
     ),
     "in_review": StatusDef(
@@ -45,7 +45,7 @@ STATUS: dict[str, StatusDef] = {
         next=("approved", "needs_changes", "rejected"),
     ),
     "needs_changes": StatusDef(
-        "needs_changes", "Требует доработки", "amber",
+        "needs_changes", "Нужно исправить заявку", "amber",
         next=("resubmitted",), comment_required=True,
     ),
     "resubmitted": StatusDef(
@@ -61,31 +61,92 @@ STATUS: dict[str, StatusDef] = {
         "active", "Субсидирование активно", "green", next=("completed",)
     ),
     "completed": StatusDef("completed", "Завершена", "green"),
-    "rejected": StatusDef("rejected", "Отказ", "red", comment_required=True),
+    "rejected": StatusDef("rejected", "Не одобрена", "red", comment_required=True),
 }
 
 # Terminal statuses (no outgoing transitions).
 TERMINAL = {"completed", "rejected"}
 
 
-def can_transition(src: str, dst: str) -> bool:
-    s = STATUS.get(src)
-    return bool(s and dst in s.next)
+# --- DB-configurable overrides (Фаза 4.4) ------------------------------------
+# The map above is the DEFAULT and the seed source. At startup (and after admin
+# edits) `load_status_config(db)` loads StatusModel/StatusTransition into these
+# caches. While empty (offline / before seed) everything falls back to STATUS,
+# so behaviour is unchanged. Statuses, labels, colours, SLA, comment rules and
+# transitions (per named flow) become admin-editable without code.
+_OVR: dict[str, dict] | None = None
+_FLOWS: dict[str, dict[str, list[str]]] = {}
+
+
+def load_status_config(db) -> None:
+    global _OVR, _FLOWS
+    from sqlmodel import select
+
+    from .models import StatusModel, StatusTransition
+
+    rows = db.exec(select(StatusModel)).all()
+    if not rows:
+        _OVR, _FLOWS = None, {}
+        return
+    _OVR = {
+        m.key: {
+            "label": m.label,
+            "color": m.color,
+            "who": m.who,
+            "sla": m.sla,
+            "comment_required": m.commentRequired,
+            "terminal": m.terminal,
+        }
+        for m in rows
+    }
+    flows: dict[str, dict[str, list[str]]] = {}
+    for t in sorted(db.exec(select(StatusTransition)).all(), key=lambda t: t.sortOrder):
+        targets = flows.setdefault(t.flow, {}).setdefault(t.fromKey, [])
+        if t.toKey and t.toKey not in targets:
+            targets.append(t.toKey)
+    _FLOWS = flows
+
+
+def _eff(key: str) -> dict | None:
+    if _OVR is not None:
+        return _OVR.get(key)
+    d = STATUS.get(key)
+    if not d:
+        return None
+    return {
+        "label": d.label,
+        "color": d.color,
+        "who": d.who,
+        "sla": d.sla,
+        "comment_required": d.comment_required,
+        "terminal": key in TERMINAL,
+    }
+
+
+def next_statuses(key: str, flow: str = "default") -> list[str]:
+    if _FLOWS:
+        return list(_FLOWS.get(flow, {}).get(key, []))
+    d = STATUS.get(key)
+    return list(d.next) if d else []
+
+
+def can_transition(src: str, dst: str, flow: str = "default") -> bool:
+    return dst in next_statuses(src, flow)
 
 
 def requires_comment(dst: str) -> bool:
-    d = STATUS.get(dst)
-    return bool(d and d.comment_required)
+    d = _eff(dst)
+    return bool(d and d["comment_required"])
 
 
 def status_label(key: str) -> str:
-    d = STATUS.get(key)
-    return d.label if d else key
+    d = _eff(key)
+    return d["label"] if d else key
 
 
 def status_color(key: str) -> str:
-    d = STATUS.get(key)
-    return d.color if d else "gray"
+    d = _eff(key)
+    return d["color"] if d else "gray"
 
 
 def add_working_days(start: date, days: int) -> date:

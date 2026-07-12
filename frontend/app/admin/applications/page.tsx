@@ -24,6 +24,7 @@ type QueueDetail = {
   id: string;
   number: string;
   status: string;
+  statusLabel: string;
   answers: Record<string, unknown>;
   calc: Record<string, unknown>;
   pdfUrl: string | null;
@@ -149,7 +150,7 @@ export default function AdminQueuePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusChip status={r.status} />
+                      <StatusChip status={r.status} label={r.statusLabel} />
                     </td>
                     <td className="px-4 py-3">
                       <SlaCell sla={r.sla} />
@@ -250,7 +251,7 @@ function QueueDrawer({
                 <p className="text-[12px] text-muted">{data.company?.name}</p>
               </div>
             </div>
-            <StatusChip status={data.status} />
+            <StatusChip status={data.status} label={data.statusLabel} />
           </div>
 
           {/* decision panel */}

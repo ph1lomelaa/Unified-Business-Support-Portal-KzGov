@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     ai_model: str = "claude-sonnet-4-6"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    # Явный выбор провайдера: "auto" (Claude → OpenAI), "openai" или "anthropic".
+    ai_provider: str = "auto"
 
     # Optional key for the data.egov.kz integration adapter.
     data_egov_api_key: str = ""

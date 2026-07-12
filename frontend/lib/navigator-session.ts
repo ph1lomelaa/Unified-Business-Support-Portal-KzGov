@@ -9,12 +9,17 @@
 
 import type { ServiceCard } from "@/lib/types";
 
-export type NavRecommendation = { service: ServiceCard; reason: string };
+export type NavRecommendation = {
+  service: ServiceCard;
+  reason: string;
+  evidence?: Array<{ label: string; value: string }>;
+};
 
 export type NavResult = {
   recommendations: NavRecommendation[];
   clarify: string | null;
   source: "ai" | "fallback";
+  cached?: boolean;
 };
 
 export type NavSnapshot = { query: string; result: NavResult };

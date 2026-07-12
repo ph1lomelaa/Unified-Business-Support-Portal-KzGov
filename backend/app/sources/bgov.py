@@ -96,7 +96,8 @@ def normalize_card(row: dict, base_url: str) -> BgovCard:
     # instead of AI-guessing a summary, so the service page shows the actual
     # published sections.
     description = structured_description(row.get("content")) or blocks or summary
-    evidence = evidence_from_conditions(conditions) + extract_document_evidence(requirements, blocks)
+    # Документы идут первым блоком (сверху), затем условия.
+    evidence = extract_document_evidence(requirements, blocks) + evidence_from_conditions(conditions)
     text = "\n\n".join(
         part
         for part in [

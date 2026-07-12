@@ -76,6 +76,12 @@ SYSTEMS: list[dict] = [
         "adapterType": "mock", "status": "planned", "sla": "99.0%",
         "nextStep": "Согласовать embed URLs и наборы открытых показателей",
     },
+    {
+        "id": "nsi-registry", "name": "НСИ / Реестр справочников", "owner": "Госорган",
+        "purpose": "Единые справочники (ОКЭД, регионы) для конструктора форм", "kind": "external",
+        "adapterType": "mock", "status": "mocked", "sla": "99.0%", "latencyMs": 480,
+        "nextStep": "Подключить продуктивный реестр НСИ вместо demo fixture",
+    },
 ]
 
 # Operations = the callable surface of each system (what bus.call(...) targets).
@@ -117,6 +123,14 @@ OPERATIONS: list[dict] = [
         "requestSchema": {"status": "string", "reason": "string"},
         "responseSchema": {"ack": "bool"},
         "mockDataset": {"ack": True, "status": "in_review"},
+    },
+    {
+        "systemId": "nsi-registry", "code": "dictionary.fetch",
+        "title": "Загрузка справочника по коду", "method": "POST", "path": "/dictionaries/{code}",
+        "direction": "outbound", "latencyMs": 480,
+        "requestSchema": {"code": "string"},
+        "responseSchema": {"items": "array<{value,label}>"},
+        "mockDataset": {"resolver": "nsi.dictionary"},
     },
 ]
 

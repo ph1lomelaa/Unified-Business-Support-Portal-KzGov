@@ -10,7 +10,7 @@ import { ServiceCard } from "@/components/catalog/service-card";
 const FEATURED = ["brk-wagons-leasing", "damu-subsidy", "akk-animal"];
 
 export function FeaturedServices() {
-  const [services, setServices] = React.useState<ServiceCardType[]>([]);
+  const [services, setServices] = React.useState<ServiceCardType[] | null>(null);
 
   React.useEffect(() => {
     api<ServiceCardType[]>("/api/v1/services")
@@ -22,6 +22,22 @@ export function FeaturedServices() {
       })
       .catch(() => setServices([]));
   }, []);
+
+  if (services === null) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-card border border-border bg-surface p-5 shadow-[var(--shadow-card)]">
+            <div className="skeleton h-10 w-10 rounded-control" />
+            <div className="skeleton mt-4 h-4 w-2/3" />
+            <div className="skeleton mt-3 h-3 w-full" />
+            <div className="skeleton mt-2 h-3 w-5/6" />
+            <div className="skeleton mt-5 h-8 w-28 rounded-control" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (services.length === 0) return null;
 

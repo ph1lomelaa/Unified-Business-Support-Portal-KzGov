@@ -18,6 +18,10 @@ export function PublishPanel({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = React.useState(false);
+  const [comparison, setComparison] = React.useState<{
+    fromVersion: number; toVersion: number; added: string[]; removed: string[];
+    changed: string[]; pagesBefore: number; pagesAfter: number;
+  } | null>(null);
   const hasUnpublished =
     service.latestVersion > 0 &&
     service.activeVersion !== service.latestVersion;
@@ -37,6 +41,17 @@ export function PublishPanel({
       toast.error(e instanceof Error ? e.message : "Не удалось опубликовать");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function compare() {
+    if (!service.activeVersion || service.activeVersion === service.latestVersion) return;
+    try {
+      setComparison(await api<NonNullable<typeof comparison>>(
+        `/api/v1/admin/services/${service.id}/versions/compare?fromVersion=${service.activeVersion}&toVersion=${service.latestVersion}`
+      ));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось сравнить версии");
     }
   }
 
@@ -79,6 +94,21 @@ export function PublishPanel({
                   ? `Опубликовать изменения (v${service.latestVersion})`
                   : "Опубликовать услугу"}
             </Button>
+            {hasUnpublished && service.activeVersion && (
+              <Button variant="outline" onClick={() => void compare()} className="w-full">
+                Сравнить v{service.activeVersion} → v{service.latestVersion}
+              </Button>
+            )}
+
+            {comparison && (
+              <div className="rounded-control border border-border bg-bg p-3 text-[12px] text-fg">
+                <p className="font-semibold">Изменения перед публикацией</p>
+                <p className="mt-1 text-muted">Страниц: {comparison.pagesBefore} → {comparison.pagesAfter}</p>
+                <p className="mt-1">Добавлено: {comparison.added.join(", ") || "—"}</p>
+                <p>Удалено: {comparison.removed.join(", ") || "—"}</p>
+                <p>Изменено: {comparison.changed.join(", ") || "—"}</p>
+              </div>
+            )}
 
             {hasUnpublished ? (
               <div className="flex gap-2 rounded-control border border-st-amber-bg bg-st-amber-bg px-3 py-2 text-[13px] text-st-amber">

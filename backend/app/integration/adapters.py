@@ -76,6 +76,41 @@ def _resolve_company(payload: dict, db: Session) -> dict:
     }
 
 
+# НСИ (нормативно-справочная информация) — a mock external registry that serves
+# reference-dictionary items. `Dictionary(source="external")` syncs from here via
+# bus.call("nsi-registry", "dictionary.fetch", {"code": ...}). Returns {"items":
+# [{value,label,parentValue?}]} so the admin sync endpoint can upsert them.
+_NSI_CATALOG: dict[str, list[dict]] = {
+    "oked": [
+        {"value": "01.11", "label": "Выращивание зерновых культур"},
+        {"value": "01.13", "label": "Выращивание овощей, бахчевых, корнеплодов"},
+        {"value": "01.41", "label": "Разведение молочного крупного рогатого скота"},
+        {"value": "01.42", "label": "Разведение прочего крупного рогатого скота и буйволов"},
+        {"value": "01.47", "label": "Разведение сельскохозяйственной птицы"},
+        {"value": "10.11", "label": "Переработка и консервирование мяса"},
+        {"value": "10.51", "label": "Производство молочной продукции"},
+        {"value": "10.71", "label": "Производство хлеба и мучных кондитерских изделий"},
+        {"value": "25.11", "label": "Производство строительных металлоконструкций"},
+        {"value": "41.20", "label": "Строительство жилых и нежилых зданий"},
+        {"value": "46.90", "label": "Неспециализированная оптовая торговля"},
+        {"value": "47.11", "label": "Розничная торговля в неспециализированных магазинах"},
+        {"value": "49.41", "label": "Грузовые перевозки автомобильным транспортом"},
+        {"value": "62.01", "label": "Разработка программного обеспечения"},
+        {"value": "62.02", "label": "Консультирование в области ИТ"},
+        {"value": "72.19", "label": "Научные исследования и разработки"},
+    ],
+}
+
+
+@resolver("nsi.dictionary")
+def _resolve_nsi_dictionary(payload: dict, db: Session) -> dict:
+    code = str(payload.get("code", "")).strip()
+    items = _NSI_CATALOG.get(code)
+    if items is None:
+        raise AdapterError(f"НСИ: справочник '{code}' не найден в реестре")
+    return {"code": code, "items": items, "source": "НСИ / внешний реестр (имитация)"}
+
+
 # --- adapters -----------------------------------------------------------------
 class Adapter:
     def execute(

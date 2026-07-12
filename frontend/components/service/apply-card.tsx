@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, FileCheck2, Phone, Search } from "lucide-react";
+import { Phone, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ApplyCard({ slug }: { slug: string }) {
@@ -13,14 +13,8 @@ export function ApplyCard({ slug }: { slug: string }) {
       </Button>
 
       <ul className="mt-4 space-y-2.5 text-[13px] text-muted">
-        <li className="flex items-center gap-2">
-          <Clock size={18} strokeWidth={1.75} className="text-accent" />≈ 15 минут
-          на подачу
-        </li>
-        <li className="flex items-center gap-2">
-          <FileCheck2 size={18} strokeWidth={1.75} className="text-accent" />
-          12 полей — остальное заполним по БИН
-        </li>
+        <li>≈ 15 минут на подачу</li>
+        <li>12 полей — остальное заполним по БИН</li>
       </ul>
 
       <div className="mt-4 border-t border-border pt-4">

@@ -1,11 +1,7 @@
 import { Chip } from "@/components/ui/chip";
 import { statusMeta } from "@/lib/status";
 
-export function StatusChip({ status }: { status: string }) {
+export function StatusChip({ status, label }: { status: string; label?: string }) {
   const m = statusMeta(status);
-  return (
-    <Chip tone={m.tone} pulse={status === "in_review"}>
-      {m.label}
-    </Chip>
-  );
+  return <Chip tone={m.tone}>{label ?? m.label}</Chip>;
 }

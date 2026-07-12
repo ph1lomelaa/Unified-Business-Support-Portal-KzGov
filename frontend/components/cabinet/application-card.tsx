@@ -27,7 +27,7 @@ function cta(status: string): { label: string; icon: React.ReactNode } {
   if (status === "needs_changes")
     return { label: "Загрузить документы", icon: <Upload size={16} strokeWidth={1.75} /> };
   if (status === "stage2_required")
-    return { label: "Заполнить этап 2", icon: <ArrowRight size={16} strokeWidth={1.75} /> };
+    return { label: "Добавить сведения", icon: <ArrowRight size={16} strokeWidth={1.75} /> };
   if (status === "approved" || status === "completed" || status === "active")
     return { label: "Посмотреть решение", icon: <FileText size={16} strokeWidth={1.75} /> };
   return { label: "Открыть", icon: <Eye size={16} strokeWidth={1.75} /> };
@@ -62,7 +62,7 @@ export function ApplicationCard({ app }: { app: AppListItem }) {
             </p>
           </div>
         </div>
-        <StatusChip status={app.status} />
+        <StatusChip status={app.status} label={app.statusLabel} />
       </div>
 
       <div className="mt-4">
@@ -96,7 +96,7 @@ function DayProgress({ status, step, total }: { status: string; step: number; to
   const days = Array.from({ length: total }, (_, i) => i + 1);
 
   return (
-    <div className="mt-2 grid grid-cols-5 gap-1.5" aria-label={`Этап ${step} из ${total}`}>
+    <div className="mt-2 grid grid-cols-5 gap-1.5" aria-label={`Прогресс заявки: шаг ${step} из ${total}`}>
       {days.map((day) => {
         const active = day <= step;
         return (

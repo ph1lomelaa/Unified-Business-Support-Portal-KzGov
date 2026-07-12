@@ -4,7 +4,6 @@ import * as React from "react";
 import * as Accordion from "@radix-ui/react-accordion";
 import {
   FileText,
-  Lock,
   Info,
   ChevronDown,
   CircleDot,
@@ -58,8 +57,7 @@ export function ServiceTabs({ service }: { service: ServiceFull }) {
               <FileText size={20} strokeWidth={1.75} className="text-muted" />
               <span className="flex-1 text-[14px] text-fg">{d.name}</span>
               {d.auto ? (
-                <span className="inline-flex items-center gap-1 rounded-control bg-st-green-bg px-2 py-0.5 text-[12px] font-medium text-st-green">
-                  <Lock size={13} strokeWidth={2} />
+                <span className="inline-flex items-center rounded-control bg-st-green-bg px-2 py-0.5 text-[12px] font-medium text-st-green">
                   {t("service.docs.auto")}
                 </span>
               ) : d.condition ? (

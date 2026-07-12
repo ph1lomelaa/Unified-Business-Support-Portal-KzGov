@@ -18,6 +18,7 @@ from sqlmodel import Session
 
 from ..auth.eds import parse_cms_subject
 from ..db import get_session
+from ..integration import bus
 from ..models import Company
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -45,6 +46,16 @@ class EdsBody(BaseModel):
 
 class DemoBody(BaseModel):
     role: str
+
+
+class EgovStartBody(BaseModel):
+    next: str | None = None
+
+
+class EgovCallbackBody(BaseModel):
+    state: str
+    iin: str = "123456789012"
+    phone: str | None = None
 
 
 @router.get("/nonce")
@@ -78,3 +89,41 @@ def demo_login(body: DemoBody):
     if not user:
         raise HTTPException(400, "Неизвестная роль")
     return {"user": user}
+
+
+@router.post("/egov/start")
+def egov_start(body: EgovStartBody):
+    state = secrets.token_urlsafe(18)
+    return {
+        "state": state,
+        "redirectPath": f"/login/egov-idp?state={state}",
+        "next": body.next or "/cabinet",
+    }
+
+
+@router.post("/egov/callback")
+def egov_callback(body: EgovCallbackBody, db: Session = Depends(get_session)):
+    envelope = bus.call(
+        db,
+        "egov-idp",
+        "auth.callback",
+        {"iin": body.iin, "phone": body.phone},
+        idempotency_key=f"egov-login-{body.state}",
+        direction="inbound",
+    )
+    if not envelope.get("ok") or not envelope.get("data", {}).get("authenticated"):
+        raise HTTPException(502, envelope.get("error") or "eGov IDP недоступен")
+
+    iin = str(envelope["data"].get("subject") or body.iin)
+    company = db.get(Company, iin)
+    user = {
+        "id": f"egov-{iin}",
+        "name": "Пользователь eGov mobile",
+        "role": "entrepreneur",
+        "bin": iin,
+        "orgId": None,
+        "company": company.name if company else None,
+        "authProvider": "egov-idp",
+        "integrationCallId": envelope.get("callId"),
+    }
+    return {"user": user, "integration": envelope}

@@ -5,26 +5,38 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookOpenText,
+  Calculator,
   ClipboardList,
   DatabaseZap,
+  FileBarChart,
   FileInput,
   LayoutDashboard,
+  Library,
+  MapPinned,
   Network,
+  Rss,
   ScrollText,
+  Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_ITEMS = [
   { href: "/admin", label: "Обзор", icon: LayoutDashboard, exact: true },
   { href: "/admin/services", label: "Услуги", icon: ClipboardList },
+  { href: "/admin/dictionaries", label: "Справочники", icon: Library },
   { href: "/admin/imports", label: "Импорт из источников", icon: FileInput },
   { href: "/admin/knowledge", label: "База знаний", icon: BookOpenText },
+  { href: "/admin/calculators", label: "Калькуляторы", icon: Calculator },
+  { href: "/admin/reports", label: "Аналитика дочерних компаний", icon: FileBarChart },
+  { href: "/admin/projects", label: "Карта проектов", icon: MapPinned },
   { href: "/admin/applications", label: "Заявки", icon: DatabaseZap },
   { href: "/admin/analytics", label: "Аналитика", icon: BarChart3 },
 ];
 
 const CONTROL_ITEMS = [
   { href: "/admin/integrations", label: "Интеграции", icon: Network },
+  { href: "/admin/sources", label: "Источники", icon: Rss },
+  { href: "/admin/statuses", label: "Статусы и маршруты", icon: Workflow },
   { href: "/admin/audit", label: "Журнал аудита", icon: ScrollText },
 ];
 

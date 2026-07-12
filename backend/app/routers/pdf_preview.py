@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..db import get_session
+from ..calc_eval import FormulaError, compute_schema_expressions
 from ..models import Company, FormSchema, Organization, Service
 from ..pdf.generator import render_application_pdf
 from ..session import require_role
@@ -32,11 +33,22 @@ def _pdf(pdf: bytes) -> Response:
 
 @router.post("/services/{slug}/preview-pdf")
 def preview_pdf(slug: str, body: PreviewBody, db: Session = Depends(get_session)):
-    service = db.exec(select(Service).where(Service.slug == slug)).first()
+    service = db.exec(
+        select(Service).where(Service.slug == slug, Service.status == "published")
+    ).first()
     if not service:
         raise HTTPException(404, "Услуга не найдена")
     org = db.get(Organization, service.orgId)
     company = db.get(Company, body.bin) if body.bin else None
+    active = db.exec(
+        select(FormSchema).where(
+            FormSchema.serviceId == service.id, FormSchema.isActive == True  # noqa: E712
+        )
+    ).first()
+    try:
+        calc = compute_schema_expressions(active.schema if active else {}, body.answers)
+    except FormulaError as exc:
+        raise HTTPException(422, f"Ошибка автоматического расчёта: {exc}") from exc
     pdf = render_application_pdf(
         app_number="EPPB-2026-000124",
         app_date=None,
@@ -44,7 +56,7 @@ def preview_pdf(slug: str, body: PreviewBody, db: Session = Depends(get_session)
         org_name=org.name if org else "",
         company=_company_or_placeholder(company),
         answers=body.answers,
-        calc=body.calc,
+        calc=calc,
         doc_template=service.docTemplate,
     )
     return _pdf(pdf)
@@ -68,7 +80,12 @@ def test_pdf(
         .where(FormSchema.serviceId == service_id)
         .order_by(FormSchema.version.desc())
     ).first()
-    answers, calc = _sample_values(schema.schema if schema else {})
+    schema_payload = schema.schema if schema else {}
+    answers, _legacy_calc = _sample_values(schema_payload)
+    try:
+        calc = compute_schema_expressions(schema_payload, answers)
+    except FormulaError:
+        calc = {}
     pdf = render_application_pdf(
         app_number="EPPB-2026-000000",
         app_date=None,

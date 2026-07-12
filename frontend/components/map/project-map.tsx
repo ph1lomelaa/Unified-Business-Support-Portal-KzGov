@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { CircleMarker, GeoJSON, MapContainer, Pane, Popup, Tooltip, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression, LatLngExpression, LeafletMouseEvent, PathOptions } from "leaflet";
-import { Database, ExternalLink, FileText, InfoIcon, Network, ShieldCheck } from "lucide-react";
+import { Database, ExternalLink, FileText, Network, ShieldCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Card, CardBody, CardTitle } from "@/components/ui/card";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -24,8 +24,8 @@ type Project = {
   year: number;
   amount: number;
   jobs: number;
-  lat: number;
-  lon: number;
+  lat: number | null;
+  lon: number | null;
   description: string;
   url: string;
 };
@@ -60,6 +60,7 @@ type Payload = {
     orgs: { id: string; name: string }[];
     industries: string[];
     years: number[];
+    statuses: string[];
   };
 };
 
@@ -120,6 +121,7 @@ export function ProjectMap() {
   const [org, setOrg] = React.useState("");
   const [industry, setIndustry] = React.useState("");
   const [year, setYear] = React.useState("");
+  const [status, setStatus] = React.useState("");
   const [selected, setSelected] = React.useState<Project | null>(null);
   const [region, setRegion] = React.useState<Region | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -129,9 +131,15 @@ export function ProjectMap() {
     if (org) qs.set("org", org);
     if (industry) qs.set("industry", industry);
     if (year) qs.set("year", year);
+    if (status) qs.set("status", status);
     try {
       const payload = await api<Payload>(`/api/v1/map/projects?${qs}`);
       setData(payload);
+      setSelected((current) =>
+        current && payload.projects.some((project) => project.id === current.id)
+          ? current
+          : null
+      );
       setError(null);
       setRegion((prev) => {
         const stillExists = prev ? payload.regions.find((r) => r.id === prev.id) : undefined;
@@ -142,7 +150,7 @@ export function ProjectMap() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Неизвестная ошибка");
     }
-  }, [org, industry, year]);
+  }, [org, industry, year, status]);
 
   React.useEffect(() => {
     void load();
@@ -161,6 +169,7 @@ export function ProjectMap() {
   const regionByIso = new Map(regions.map((r) => [r.geoIso, r]).filter(([iso]) => Boolean(iso)) as [string, Region][]);
   const totalAmount = projects.reduce((s, p) => s + p.amount, 0);
   const totalJobs = projects.reduce((s, p) => s + p.jobs, 0);
+  const hasFilters = Boolean(org || industry || year || status);
 
   return (
     <div className="space-y-5">
@@ -186,6 +195,21 @@ export function ProjectMap() {
               placeholder={t("map.filters.year")}
               options={(data?.filters.years ?? []).map((x) => ({ value: String(x), label: String(x) }))}
             />
+            <Select
+              value={status}
+              onValueChange={setStatus}
+              placeholder={t("map.filters.status")}
+              options={(data?.filters.statuses ?? []).map((x) => ({ value: x, label: x }))}
+            />
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={() => { setOrg(""); setIndustry(""); setYear(""); setStatus(""); }}
+                className="h-10 rounded-control px-3 text-[13px] font-medium text-brand-green hover:bg-st-green-bg focus-visible:outline-2 focus-visible:outline-brand-green"
+              >
+                {t("map.filters.reset")}
+              </button>
+            )}
           </div>
           <div className="flex flex-col gap-3 border-b border-border bg-[#F8FAF7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -251,12 +275,12 @@ export function ProjectMap() {
                 );
               })}
               <Pane name="project-markers" style={{ zIndex: 650 }}>
-                {projects.map((p) => {
+                {projects.filter((p) => p.lat !== null && p.lon !== null).map((p) => {
                   const isSelected = selected?.id === p.id;
                   return (
                     <CircleMarker
                       key={p.id}
-                      center={[p.lat, p.lon]}
+                      center={[p.lat!, p.lon!]}
                       radius={isSelected ? 8 : 6.5}
                       pathOptions={{
                         color: "#ffffff",
@@ -286,49 +310,53 @@ export function ProjectMap() {
           <ChoroplethLegend />
         </div>
 
-        <aside className="grid gap-4 lg:grid-cols-[360px_1fr]">
-          <Card>
-            <CardBody>
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle>{t("map.summary.title")}</CardTitle>
-                <DemoDataBadge />
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <SmallMetric label={t("map.summary.count")} value={projects.length.toLocaleString("ru-RU")} />
-                <SmallMetric label={t("map.summary.amount")} value={`${Math.round(totalAmount / 1_000_000_000)} млрд`} />
-                <SmallMetric label={t("map.summary.jobs")} value={totalJobs.toLocaleString("ru-RU")} />
-              </div>
-            </CardBody>
-          </Card>
+        <div className="space-y-3">
+          {/* Итоги по выборке — надписью сверху, не отдельной колонкой */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3">
+            <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+              <span className="text-[13px] font-semibold uppercase tracking-[0.04em] text-ink">
+                {t("map.summary.title")}
+              </span>
+              <SummaryInline label={t("map.summary.count")} value={projects.length.toLocaleString("ru-RU")} />
+              <SummaryInline label={t("map.summary.amount")} value={`${Math.round(totalAmount / 1_000_000_000)} млрд ₸`} />
+              <SummaryInline label={t("map.summary.jobs")} value={totalJobs.toLocaleString("ru-RU")} />
+            </div>
+            <DemoDataBadge />
+          </div>
 
-        {selected ? (
-          <Card>
-            <CardBody>
-              <CardTitle>{selected.title}</CardTitle>
-              <dl className="mt-4 space-y-2 text-[14px]">
-                <Info label={t("map.field.org")} value={selected.org} />
-                <Info label={t("map.field.region")} value={selected.region} />
-                <Info label={t("map.field.industry")} value={selected.industry} />
-                <Info label={t("map.field.amount")} value={`${selected.amount.toLocaleString("ru-RU")} ₸`} />
-                <Info label={t("map.field.period")} value={String(selected.year)} />
-                <Info label={t("map.field.status")} value={selected.status} />
-              </dl>
-              <p className="mt-4 text-[13px] text-muted">{selected.description}</p>
-            </CardBody>
-          </Card>
-        ) : region ? (
-          <RegionCard region={region} projects={projects.filter((p) => p.regionId === region.id).slice(0, 5)} />
-        ) : (
-          <Card>
-            <CardBody>
-              <CardTitle>{t("map.empty.title")}</CardTitle>
-              <p className="mt-2 text-[14px] text-muted">
-                {t("map.empty.hint")}
-              </p>
-            </CardBody>
-          </Card>
-        )}
-        </aside>
+          {selected ? (
+            <Card>
+              <CardBody>
+                <CardTitle>{selected.title}</CardTitle>
+                <dl className="mt-4 space-y-2 text-[14px]">
+                  <Info label={t("map.field.org")} value={selected.org} />
+                  <Info label={t("map.field.region")} value={selected.region} />
+                  <Info label={t("map.field.industry")} value={selected.industry} />
+                  <Info label={t("map.field.amount")} value={`${selected.amount.toLocaleString("ru-RU")} ₸`} />
+                  <Info label={t("map.field.period")} value={String(selected.year)} />
+                  <Info label={t("map.field.status")} value={selected.status} />
+                </dl>
+                <p className="mt-4 text-[13px] text-muted">{selected.description}</p>
+              </CardBody>
+            </Card>
+          ) : region ? (
+            <RegionCard region={region} projects={projects.filter((p) => p.regionId === region.id).slice(0, 5)} />
+          ) : (
+            <Card>
+              <CardBody>
+                <CardTitle>{t("map.empty.title")}</CardTitle>
+                <p className="mt-2 text-[14px] text-muted">{t("map.empty.hint")}</p>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Повтор итогов снизу — надписью */}
+          <p className="text-[12px] leading-relaxed text-muted">
+            Всего по выборке: {projects.length.toLocaleString("ru-RU")} проектов ·{" "}
+            {Math.round(totalAmount / 1_000_000_000)} млрд ₸ финансирования ·{" "}
+            {totalJobs.toLocaleString("ru-RU")} рабочих мест. Данные демонстрационные.
+          </p>
+        </div>
       </div>
       <DataSources />
       <ProductionFlow />
@@ -420,6 +448,15 @@ function SmallMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SummaryInline({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="num text-[18px] font-bold text-ink">{value}</span>
+      <span className="text-[12px] text-muted">{label}</span>
+    </span>
+  );
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
@@ -483,9 +520,8 @@ function RegionCard({ region, projects }: { region: Region; projects: Project[] 
 
 function DemoDataBadge() {
   return (
-    <Link href="/sources" className="group relative inline-flex shrink-0 items-center gap-1.5 rounded-control border border-st-amber-bg bg-st-amber-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.03em] text-st-amber hover:border-st-amber">
+    <Link href="/sources" className="group relative inline-flex shrink-0 items-center rounded-control border border-st-amber-bg bg-st-amber-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.03em] text-st-amber hover:border-st-amber">
       Демо-данные
-      <InfoIcon size={13} strokeWidth={2} />
       <span className="pointer-events-none absolute right-0 top-full z-[1000] mt-2 hidden w-[320px] rounded-control border border-border bg-white p-3 text-left text-[12px] font-normal normal-case leading-relaxed tracking-normal text-fg shadow-[var(--shadow-pop)] group-hover:block">
         Финансовые данные по конкретным проектам являются коммерческой тайной
         заёмщиков и не публикуются ни одной организацией группы. Раздел

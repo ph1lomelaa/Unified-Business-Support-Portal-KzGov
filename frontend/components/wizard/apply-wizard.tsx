@@ -418,7 +418,6 @@ function WizardProgress({ steps }: { steps: StepState[] }) {
                 : "border-border bg-surface text-muted"
           )}
         >
-          {s.done && <CheckCircle2 size={15} strokeWidth={2} />}
           <span className={cn("tabular-nums", s.active && "text-gold")}>
             {i + 1}.
           </span>
@@ -545,11 +544,11 @@ function ReviewStep({
           size="lg"
         >
           <ShieldCheck size={20} strokeWidth={1.75} />
-          {multistage ? "Подписать и подать (этап 1)" : "Подписать и отправить"}
+          {multistage ? "Подписать и подать первичную заявку" : "Подписать и отправить"}
         </Button>
         <p className="mt-2 text-center text-[12px] text-muted">
           {multistage
-            ? "Это услуга в два этапа: после подачи потребуется этап 2 в кабинете."
+            ? "После первичной подачи в личном кабинете нужно будет добавить расширенные сведения."
             : "Подпись через NCALayer (ЭЦП). Без NCALayer — демо-подпись."}
         </p>
       </div>
@@ -702,9 +701,9 @@ function SuccessScreen({ result }: { result: SubmitResult }) {
       </h2>
       {multistage ? (
         <p className="mt-2 text-[14px] text-muted">
-          Это услуга в два этапа. Первичная заявка сохранена. Следующий шаг —{" "}
+          Первичная заявка сохранена. Следующий шаг —{" "}
           <span className="font-medium text-ink">
-            этап 2: расширенные данные и документы
+            расширенные сведения и документы
           </span>{" "}
           — доступен в личном кабинете. После него заявка уйдёт на рассмотрение.
         </p>
@@ -717,7 +716,7 @@ function SuccessScreen({ result }: { result: SubmitResult }) {
       <div className="mt-6 flex justify-center gap-3">
         <Button asChild>
           <Link href="/cabinet">
-            {multistage ? "Перейти к этапу 2" : "В личный кабинет"}
+            {multistage ? "Добавить сведения" : "В личный кабинет"}
           </Link>
         </Button>
         <Button asChild variant="outline">

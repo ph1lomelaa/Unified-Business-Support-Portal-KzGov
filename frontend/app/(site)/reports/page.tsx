@@ -1,14 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { BarChart3, BookOpen, CalendarDays, ExternalLink, FileText, Globe } from "lucide-react";
+import { CalendarDays, ExternalLink, Maximize2 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardTitle } from "@/components/ui/card";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { OrgLogo } from "@/components/org-logo";
+import { AnalyticsDashboard } from "@/components/reports/analytics-dashboard";
 import { useI18n } from "@/i18n/provider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type ReportItem = {
   id: string;
@@ -20,6 +22,7 @@ type ReportItem = {
   period: string;
   updated: string;
   url: string;
+  embedUrl?: string | null;
   orgName: string;
   orgShort: string;
   orgColor: string;
@@ -42,20 +45,13 @@ type ReportsResp = {
   total: number;
 };
 
-const TYPE_ICON: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
-  portal: Globe,
-  financial: FileText,
-  research: BookOpen,
-  review: FileText,
-  dashboard: BarChart3,
-};
-
 export default function ReportsPage() {
   const { t } = useI18n();
   const [data, setData] = React.useState<ReportsResp | null>(null);
   const [orgsSelected, setOrgsSelected] = React.useState<string[]>([]);
   const [typesSelected, setTypesSelected] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [embedded, setEmbedded] = React.useState<ReportItem | null>(null);
 
   const load = React.useCallback(() => {
     api<ReportsResp>("/api/v1/reports")
@@ -96,7 +92,20 @@ export default function ReportsPage() {
 
       {error && <ErrorBanner className="mt-6" message={error} onRetry={load} />}
 
-      <div className="mt-8 flex flex-wrap items-end gap-3 border-y border-border py-4">
+      {/* Настоящий дашборд аналитики (KPI + графики), а не только каталог ссылок */}
+      <div className="mt-8">
+        <AnalyticsDashboard />
+      </div>
+
+      <div className="mt-14 border-t border-border pt-8">
+        <h2 className="text-[24px] font-bold text-ink">Материалы и отчёты</h2>
+        <p className="mt-1 max-w-2xl text-[14px] text-muted">
+          Готовые аналитические порталы, финансовая и годовая отчётность, исследования и дашборды
+          дочерних организаций Холдинга.
+        </p>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-end gap-3 border-y border-border py-4">
         <FilterSelect label={t("reports.filters.org")}>
           <MultiSelect
             values={orgsSelected}
@@ -129,7 +138,6 @@ export default function ReportsPage() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => {
-          const Icon = TYPE_ICON[item.type] ?? FileText;
           return (
             <Card key={item.id} hover className="flex flex-col">
               <CardBody className="flex flex-1 flex-col p-5">
@@ -148,8 +156,7 @@ export default function ReportsPage() {
                       {item.orgName}
                     </span>
                   </div>
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-control bg-bg px-2 py-1 text-[11px] font-medium text-muted">
-                    <Icon size={13} strokeWidth={1.75} />
+                  <span className="inline-flex shrink-0 items-center rounded-control bg-bg px-2 py-1 text-[11px] font-medium text-muted">
                     {item.typeLabel}
                   </span>
                 </div>
@@ -182,6 +189,11 @@ export default function ReportsPage() {
                     {t("reports.open")}
                   </a>
                 </Button>
+                {item.embedUrl && (
+                  <Button size="sm" variant="ghost" className="mt-2 w-full" onClick={() => setEmbedded(item)}>
+                    <Maximize2 size={16} /> {t("reports.embed")}
+                  </Button>
+                )}
               </CardBody>
             </Card>
           );
@@ -193,6 +205,19 @@ export default function ReportsPage() {
           {t("reports.empty")}
         </p>
       )}
+
+      <Dialog open={Boolean(embedded)} onOpenChange={(open) => !open && setEmbedded(null)}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader><DialogTitle>{embedded?.title}</DialogTitle></DialogHeader>
+          {embedded?.embedUrl && (
+            <iframe title={embedded.title} src={embedded.embedUrl} className="h-[70vh] w-full rounded-control border border-border" />
+          )}
+          <p className="mt-2 text-[12px] text-muted">
+            {t("reports.embedFallback")}
+          </p>
+          {embedded && <Button asChild variant="outline"><a href={embedded.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />{t("reports.openSource")}</a></Button>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,8 +10,16 @@ from __future__ import annotations
 
 import logging
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+try:  # optional dep — the scheduler only drives the experimental source scraper
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+
+    _APSCHEDULER = True
+except Exception:  # noqa: BLE001 — degrade gracefully when the wheel is absent
+    BackgroundScheduler = None  # type: ignore[assignment,misc]
+    CronTrigger = None  # type: ignore[assignment,misc]
+    _APSCHEDULER = False
+
 from sqlmodel import Session, select
 
 from ..db import engine
@@ -42,8 +50,11 @@ def _run_job(source_id: str) -> None:
             logger.exception("scheduled import %s failed", source_id)
 
 
-def start_scheduler() -> BackgroundScheduler:
+def start_scheduler() -> BackgroundScheduler | None:
     global _scheduler
+    if not _APSCHEDULER:
+        logger.warning("apscheduler недоступен — планировщик импортов отключён")
+        return None
     if _scheduler is not None:
         return _scheduler
 

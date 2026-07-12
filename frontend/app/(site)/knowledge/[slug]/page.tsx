@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, Clock, Download } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Download } from "lucide-react";
 import { BackLink } from "@/components/ui/back-link";
 import { api, ApiError } from "@/lib/api";
 import type { KnowledgeDetail, ServiceCard } from "@/lib/types";
@@ -80,8 +80,7 @@ export default function KnowledgeDetailPage() {
         <span className="rounded-control bg-bg px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.03em] text-muted">
           {t(TYPE_LABEL_KEY[item.type] ?? "knowledge.type.article")}
         </span>
-        <span className="flex items-center gap-1.5 text-[12px] text-muted">
-          <Clock size={13} strokeWidth={1.75} />
+        <span className="text-[12px] text-muted">
           <span className="num">
             {item.readMinutes} {t("knowledge.card.minutes")}
           </span>

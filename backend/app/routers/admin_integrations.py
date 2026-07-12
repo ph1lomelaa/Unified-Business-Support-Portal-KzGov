@@ -51,7 +51,7 @@ def _op_dto(op: IntegrationOperation) -> dict:
         "path": op.path,
         "direction": op.direction,
         "latencyMs": op.latencyMs,
-        "mockDataset": op.mockDataset,
+        "mockDataset": bus.redact_payload(op.mockDataset),
         "requestSchema": op.requestSchema,
         "responseSchema": op.responseSchema,
     }
@@ -99,8 +99,8 @@ def _call_dto(c: IntegrationCall) -> dict:
         "idempotencyKey": c.idempotencyKey or "—",
         "durationMs": c.latencyMs or 0,
         "attempts": c.attempts,
-        "payload": c.requestPayload,
-        "response": c.responsePayload,
+        "payload": bus.redact_payload(c.requestPayload),
+        "response": bus.redact_payload(c.responsePayload),
     }
 
 

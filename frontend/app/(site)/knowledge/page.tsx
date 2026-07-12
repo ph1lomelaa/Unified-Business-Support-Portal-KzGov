@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Calculator, Clock, FileText, GraduationCap, ListChecks, Search } from "lucide-react";
+import { Calculator, FileText, GraduationCap, ListChecks, Search } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { KnowledgeCard, KnowledgeType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -128,8 +128,7 @@ export default function KnowledgePage() {
                   </div>
                   <CardTitle className="mt-4 text-[16px]">{item.title}</CardTitle>
                   <p className="mt-2 flex-1 text-[13px] text-muted">{item.summary}</p>
-                  <p className="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-[12px] text-muted">
-                    <Clock size={13} strokeWidth={1.75} />
+                  <p className="mt-4 border-t border-border pt-3 text-[12px] text-muted">
                     <span className="num">
                       {item.readMinutes} {t("knowledge.card.minutes")}
                     </span>
