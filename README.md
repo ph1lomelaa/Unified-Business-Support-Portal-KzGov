@@ -6,7 +6,7 @@
 
 - MVP Website: https://eppb-baiterek-muslima.duckdns.org
 - Архитектура: [ARCHITECTURE.md](ARCHITECTURE.md)
-- Полный отчет: EPPB_Muslima_Kosmagambetova_hackaton.pdf
+- Полный отчет: [EPPB_Muslima_Kosmagambetova_hackaton.pdf](EPPB_Muslima_Kosmagambetova_hackaton.pdf)
 
 ## Как быстро посмотреть проект
 
