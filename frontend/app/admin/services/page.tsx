@@ -82,7 +82,7 @@ export default function RegistryPage() {
             Создавайте и публикуйте услуги в конструкторе без разработчиков.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <GenerateServiceDialog orgs={orgs}>
             <Button variant="outline">
               <Sparkles size={20} strokeWidth={1.75} />
@@ -120,8 +120,7 @@ export default function RegistryPage() {
         />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
-        <div className="overflow-x-auto">
+      <div className="mt-4 overflow-x-auto rounded-card border border-border bg-surface">
           <table className="w-full min-w-[840px] text-[14px]">
             <thead>
               <tr className="border-b border-border text-left text-[12px] font-medium uppercase tracking-wide text-muted">
@@ -198,7 +197,6 @@ export default function RegistryPage() {
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
       <CreateDialog

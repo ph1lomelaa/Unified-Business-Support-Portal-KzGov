@@ -233,35 +233,32 @@ function SupportOrgRow({ org }: { org: SupportOrg }) {
   return (
     <Link
       href={`/services?org=${org.id}`}
-      className="group grid gap-4 border-b border-border p-5 transition-colors last:border-b-0 hover:bg-bg sm:grid-cols-[56px_1fr_auto_auto] sm:items-center"
+      className="group flex items-center gap-3 border-b border-border p-4 transition-colors last:border-b-0 hover:bg-bg sm:gap-4 sm:p-5"
     >
-      <OrgLogo org={org} size={44} />
-      <div className="min-w-0">
-        <p className="text-[16px] font-bold leading-snug text-ink">{org.name}</p>
-      </div>
-      <div className="num text-[22px] font-bold text-brand-green sm:text-right">
-        {org.serviceCount}
-        <span className="ml-2 align-middle text-[13px] font-medium text-muted">
+      <OrgLogo org={org} size={44} className="shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-bold leading-snug text-ink sm:text-[16px]">{org.name}</p>
+        <p className="mt-0.5 text-[13px] text-muted">
+          <span className="num text-[16px] font-bold text-brand-green">{org.serviceCount}</span>{" "}
           {pluralizeMeasures(org.serviceCount)}
-        </span>
+        </p>
       </div>
-      <div className="text-[13px] font-bold uppercase tracking-[0.03em] text-brand-green group-hover:text-brand-green-hover">
+      <span className="shrink-0 text-[13px] font-bold uppercase tracking-[0.03em] text-brand-green group-hover:text-brand-green-hover">
         Все →
-      </div>
+      </span>
     </Link>
   );
 }
 
 function SupportOrgSkeleton() {
   return (
-    <div className="grid gap-4 border-b border-border p-5 last:border-b-0 sm:grid-cols-[56px_1fr_auto_auto] sm:items-center">
-      <div className="skeleton size-11 rounded-control" />
-      <div>
+    <div className="flex items-center gap-3 border-b border-border p-4 last:border-b-0 sm:gap-4 sm:p-5">
+      <div className="skeleton size-11 shrink-0 rounded-control" />
+      <div className="min-w-0 flex-1">
         <div className="skeleton h-4 w-2/3" />
         <div className="skeleton mt-2 h-3 w-1/3" />
       </div>
-      <div className="skeleton h-6 w-20" />
-      <div className="skeleton h-4 w-12" />
+      <div className="skeleton h-4 w-12 shrink-0" />
     </div>
   );
 }

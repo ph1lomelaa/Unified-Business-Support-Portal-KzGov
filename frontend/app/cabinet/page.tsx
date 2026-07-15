@@ -68,7 +68,7 @@ export default async function CabinetPage() {
                 <span className="ml-2 text-[13px] font-medium text-muted group-open:hidden">показать</span>
                 <span className="ml-2 hidden text-[13px] font-medium text-muted group-open:inline">скрыть</span>
               </summary>
-              <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {doneApps.map((a) => (
                   <ApplicationCard key={a.id} app={a} />
                 ))}
@@ -110,7 +110,7 @@ function ApplicationGroup({
         <span className="text-[12px] font-medium text-muted">{apps.length}</span>
       </div>
       {apps.length > 0 ? (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {apps.map((a) => (
             <ApplicationCard key={a.id} app={a} />
           ))}
@@ -145,7 +145,7 @@ function EmptyApplications({ popular }: { popular: ServiceCardType[] }) {
           <h2 className="mb-3 text-[15px] font-semibold text-ink">
             Рекомендованные услуги
           </h2>
-          <div className="grid gap-4 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             {popular.slice(0, 3).map((s) => (
               <ServiceCard key={s.id} service={s} />
             ))}

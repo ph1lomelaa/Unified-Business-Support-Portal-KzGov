@@ -225,7 +225,7 @@ export function AnalyticsDashboard() {
         Данные по проектам демонстрационные; количество услуг и организаций — из каталога портала.
       </p>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Panel title="Финансирование по годам" subtitle="млрд ₸">
           <VBars data={agg.years} dataKey="amount" color={GREEN} suffix=" млрд ₸" />
         </Panel>

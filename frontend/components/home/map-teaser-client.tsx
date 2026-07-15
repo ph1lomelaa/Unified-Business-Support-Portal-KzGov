@@ -144,7 +144,7 @@ export function MapTeaserClient() {
           zoomSnap={0}
           zoomControl={false}
           attributionControl={false}
-          className="relative z-0 aspect-[16/9] max-h-[680px] min-h-[420px] w-full"
+          className="relative z-0 aspect-[16/9] max-h-[680px] min-h-[240px] w-full sm:min-h-[420px]"
           style={{ background: "transparent" }}
         >
           <FitKazakhstan />
