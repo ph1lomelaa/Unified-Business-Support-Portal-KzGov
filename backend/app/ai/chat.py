@@ -40,6 +40,12 @@ def chat(db: Session, messages: list[dict[str, str]]) -> dict:
             )
             reply, control = _split_control_json(message_text(resp))
             cards = _resolve_cards(db, control.get("cards") or [])
+            # Гарантируем кликабельные карточки: если модель не вернула управляющий
+            # JSON с cards (gpt-4o-mini иногда его опускает), подставляем самые
+            # релевантные услуги/материалы из ретрива — чтобы «AI подобрал → можно
+            # кликнуть и перейти», а не только текст.
+            if not cards:
+                cards = _cards_from_ctx(ctx)
             suggestions = _suggestions(control.get("suggestions"))
             if reply.strip():
                 return {
@@ -202,6 +208,8 @@ def _system_prompt(ctx: dict[str, list[dict]]) -> str:
 
 Тон и формат (профессионально, как консультант банка развития, читается в узком чате):
 - сразу по сути, без «воды» и вводных вроде «Конечно!», «Отличный вопрос»;
+- НИКОГДА не пиши всё одним сплошным абзацем: дели ответ на короткие абзацы и разделяй их пустой строкой (переносом строки);
+- каждую отдельную меру поддержки выноси отдельным пунктом списка (- или 1.), а не в одну строку через запятую;
 - пиши компактно: короткие абзацы; при перечислении — маркированный или нумерованный список;
 - выделяй ключевые слова **жирным** (названия услуг, «Сумма», «Срок», «Ставка», «Покрытие»);
 - НЕ используй крупные заголовки (###, ##), markdown-таблицы и эмодзи — только абзацы, списки и **жирный**.
@@ -320,8 +328,10 @@ def _suggestions(raw: Any) -> list[str]:
     return items[:4] or DEFAULT_SUGGESTIONS
 
 
-def _fallback(ctx: dict[str, list[dict]], query: str) -> dict:
-    cards = []
+def _cards_from_ctx(ctx: dict[str, list[dict]]) -> list[dict]:
+    """Кликабельные карточки из результатов ретрива (услуги, база знаний,
+    калькулятор) — общий источник для fallback и для AI-ответа без control-JSON."""
+    cards: list[dict] = []
     for item in ctx["services"][:3]:
         cards.append(
             {
@@ -347,6 +357,11 @@ def _fallback(ctx: dict[str, list[dict]], query: str) -> dict:
     if ctx["calculators"]:
         calc = ctx["calculators"][0]
         cards.append({**calc, "org": "Калькулятор", "href": "/calculators"})
+    return cards[:6]
+
+
+def _fallback(ctx: dict[str, list[dict]], query: str) -> dict:
+    cards = _cards_from_ctx(ctx)
 
     if cards:
         reply = (

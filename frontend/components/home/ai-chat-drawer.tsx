@@ -167,7 +167,7 @@ export function AiChatDrawer() {
         aria-label={t("ai.chat.open")}
       >
         <Bot size={28} strokeWidth={1.75} />
-        <span className="absolute -top-8 right-0 whitespace-nowrap rounded-full bg-ink px-3 py-1 text-[12px] font-semibold text-white shadow-[var(--shadow-pop)]">
+        <span className="absolute -top-8 right-0 whitespace-nowrap rounded-full bg-[#0a3a22] px-3 py-1 text-[12px] font-semibold text-white shadow-[var(--shadow-pop)]">
           Помощник
         </span>
       </button>

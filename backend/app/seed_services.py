@@ -123,7 +123,7 @@ SERVICES: list[dict] = [
                          ]},
                         {"type": "html", "name": "rate_hint",
                          "html": "<div style='padding:8px 12px;background:#e3f1ec;border-radius:8px;color:#0f6e56;font-size:13px'>Ставка зависит от типа заёмщика: 5% — прямым заёмщикам, 1,5% — финансовым институтам (маржа конечным заёмщикам не более 3,5%).</div>"},
-                        {"type": "number", "name": "final_borrowers", "title": "Число конечных заёмщиков для финансирования",
+                        {"type": "text", "inputType": "number", "name": "final_borrowers", "title": "Число конечных заёмщиков для финансирования",
                          "visibleIf": "{applicant_type} = 'intermediary'", "min": 1,
                          "description": "Сколько сельхозтоваропроизводителей вы прокредитуете за счёт займа"},
                         {"type": "checkbox", "name": "target_use", "title": "Целевое использование (пополнение оборотных средств)",
@@ -140,9 +140,9 @@ SERVICES: list[dict] = [
                     "name": "loan",
                     "title": "Параметры займа",
                     "elements": [
-                        {"type": "number", "name": "loan_amount", "title": "Сумма займа, ₸", "isRequired": True, "min": 3000000, "max": 1500000000,
+                        {"type": "text", "inputType": "number", "name": "loan_amount", "title": "Сумма займа, ₸", "isRequired": True, "min": 3000000, "max": 1500000000,
                          "description": "До 1,5 млрд ₸ на заёмщика"},
-                        {"type": "number", "name": "loan_term", "title": "Срок займа, мес", "isRequired": True, "min": 6, "max": 36, "defaultValue": 24,
+                        {"type": "text", "inputType": "number", "name": "loan_term", "title": "Срок займа, мес", "isRequired": True, "min": 6, "max": 36, "defaultValue": 24,
                          "description": "Не более 36 месяцев"},
                     ],
                 },
@@ -155,10 +155,10 @@ SERVICES: list[dict] = [
                              {"value": "cattle", "text": "КРС — крупный рогатый скот"},
                              {"value": "small", "text": "МРС — мелкий рогатый скот"},
                          ]},
-                        {"type": "number", "name": "cattle_amount", "title": "Сумма на приобретение скота, ₸", "isRequired": True,
+                        {"type": "text", "inputType": "number", "name": "cattle_amount", "title": "Сумма на приобретение скота, ₸", "isRequired": True,
                          "validators": [{"type": "expression", "expression": "{cattle_amount} >= {loan_amount} * 0.7",
                                           "text": "Не менее 70% суммы займа должно идти на приобретение скота"}]},
-                        {"type": "number", "name": "cattle_head", "title": "Поголовье, голов", "min": 1},
+                        {"type": "text", "inputType": "number", "name": "cattle_head", "title": "Поголовье, голов", "min": 1},
                         {"type": "html", "name": "rule70", "html": "<div style='padding:8px 12px;background:#e3f1ec;border-radius:8px;color:#0f6e56;font-size:13px'>Правило программы: не менее 70% суммы займа направляется на приобретение скота.</div>"},
                     ],
                 },
@@ -166,18 +166,18 @@ SERVICES: list[dict] = [
                     "name": "calc",
                     "title": "Расчёт",
                     "elements": [
-                        # Ставка по программе подставляется по типу заёмщика (5% / 1,5%).
-                        # defaultValueExpression — родной механизм SurveyJS; поле — number,
-                        # поэтому серверный аудит формул (calc_eval) его не проверяет, а в
-                        # формуле экономии оно участвует как обычная арифметическая переменная.
-                        {"type": "number", "name": "program_rate", "title": "Ставка по программе, %",
-                         "readOnly": True, "defaultValue": 5,
-                         "defaultValueExpression": "iif({applicant_type} = 'intermediary', 1.5, 5)"},
-                        {"type": "number", "name": "bank_rate", "title": "Рыночная ставка банка, %", "defaultValue": 18, "min": 8, "max": 30,
+                        {"type": "text", "inputType": "number", "name": "bank_rate", "title": "Рыночная ставка банка, %", "defaultValue": 18, "min": 8, "max": 30,
                          "description": "Для сравнения экономии с рыночным кредитом"},
-                        {"type": "expression", "name": "saving", "title": "Ваша экономия за срок кредита",
-                         "expression": "{loan_amount} * ({bank_rate} - {program_rate}) / 100 * {loan_term} / 12",
+                        # Экономия относительно рыночного кредита. Ставка по программе —
+                        # 5% (прямой заёмщик, основной сценарий). Формула — чистая
+                        # арифметика (проверенный паттерн, как в остальных услугах):
+                        # никаких iif/вычисляемых полей, поэтому и расчёт, и серверный
+                        # пересчёт при подаче работают стабильно.
+                        {"type": "expression", "name": "saving", "title": "Ваша экономия относительно рыночного кредита за срок займа",
+                         "expression": "{loan_amount} * ({bank_rate} - 5) / 100 * {loan_term} / 12",
                          "displayStyle": "currency", "currency": "KZT"},
+                        {"type": "html", "name": "rate_note",
+                         "html": "<div style='padding:8px 12px;background:#e3f1ec;border-radius:8px;color:#0f6e56;font-size:13px'>Ставка по программе: 5% годовых прямым заёмщикам, 1,5% — финансовым институтам. Расчёт экономии показан для прямого заёмщика (5%).</div>"},
                     ],
                 },
                 # --- II этап: расширенные данные и документы (stage=2) ---
@@ -192,9 +192,9 @@ SERVICES: list[dict] = [
                         {"type": "html", "name": "stage2_intro", "html": "<div style='padding:8px 12px;background:#fff5e6;border-radius:8px;color:#8a5a10;font-size:13px'>Первичная заявка принята. Для передачи в работу предоставьте залоговое обеспечение, финансовые показатели и данные по договору на скот.</div>"},
                         {"type": "dropdown", "name": "collateral_type", "title": "Тип залогового обеспечения", "isRequired": True,
                          "choices": [{"value": "realestate", "text": "Недвижимость"}, {"value": "equipment", "text": "Техника и оборудование"}, {"value": "cattle", "text": "Приобретаемый скот"}, {"value": "guarantee", "text": "Гарантия Даму"}]},
-                        {"type": "number", "name": "collateral_value", "title": "Оценочная стоимость залога, ₸", "isRequired": True, "min": 1000000},
-                        {"type": "number", "name": "annual_revenue", "title": "Выручка за последний год, ₸", "isRequired": True, "min": 0},
-                        {"type": "number", "name": "employees", "title": "Среднесписочная численность, чел.", "min": 1, "defaultValue": 5},
+                        {"type": "text", "inputType": "number", "name": "collateral_value", "title": "Оценочная стоимость залога, ₸", "isRequired": True, "min": 1000000},
+                        {"type": "text", "inputType": "number", "name": "annual_revenue", "title": "Выручка за последний год, ₸", "isRequired": True, "min": 0},
+                        {"type": "text", "inputType": "number", "name": "employees", "title": "Среднесписочная численность, чел.", "min": 1, "defaultValue": 5},
                         {"type": "text", "name": "cattle_supplier", "title": "Поставщик скота", "isRequired": True},
                         {"type": "text", "name": "cattle_contract_no", "title": "№ договора на приобретение скота"},
                         {"type": "boolean", "name": "has_vet_passport", "title": "Есть ветеринарные паспорта на поголовье?", "defaultValue": True},
@@ -250,9 +250,9 @@ SERVICES: list[dict] = [
                     "elements": [
                         {"type": "dropdown", "name": "bank", "title": "Банк-кредитор", "isRequired": True,
                          "choices": ["Halyk Bank", "Kaspi Bank", "ForteBank", "Bank CenterCredit", "Jusan Bank"]},
-                        {"type": "number", "name": "loan_amount", "title": "Сумма кредита, ₸", "isRequired": True, "min": 3000000, "max": 7000000000},
-                        {"type": "number", "name": "bank_rate", "title": "Ставка банка, %", "isRequired": True, "min": 8, "max": 25, "defaultValue": 19},
-                        {"type": "number", "name": "loan_term", "title": "Срок, мес", "isRequired": True, "min": 12, "max": 60, "defaultValue": 36},
+                        {"type": "text", "inputType": "number", "name": "loan_amount", "title": "Сумма кредита, ₸", "isRequired": True, "min": 3000000, "max": 7000000000},
+                        {"type": "text", "inputType": "number", "name": "bank_rate", "title": "Ставка банка, %", "isRequired": True, "min": 8, "max": 25, "defaultValue": 19},
+                        {"type": "text", "inputType": "number", "name": "loan_term", "title": "Срок, мес", "isRequired": True, "min": 12, "max": 60, "defaultValue": 36},
                     ],
                 },
                 {
@@ -295,8 +295,8 @@ SERVICES: list[dict] = [
             "pages": [
                 company_page(),
                 {"name": "g", "title": "Параметры гарантии", "elements": [
-                    {"type": "number", "name": "loan_amount", "title": "Сумма кредита, ₸", "isRequired": True, "min": 1000000, "max": 1000000000},
-                    {"type": "number", "name": "guarantee_share", "title": "Требуемая гарантия, %", "min": 10, "max": 85, "defaultValue": 50},
+                    {"type": "text", "inputType": "number", "name": "loan_amount", "title": "Сумма кредита, ₸", "isRequired": True, "min": 1000000, "max": 1000000000},
+                    {"type": "text", "inputType": "number", "name": "guarantee_share", "title": "Требуемая гарантия, %", "min": 10, "max": 85, "defaultValue": 50},
                     {"type": "boolean", "name": "has_collateral", "title": "Есть ли частичный залог?"},
                 ]},
             ],
@@ -331,7 +331,7 @@ SERVICES: list[dict] = [
                 company_page(),
                 {"name": "contract", "title": "Об экспортном контракте", "elements": [
                     {"type": "text", "name": "buyer_country", "title": "Страна покупателя", "isRequired": True},
-                    {"type": "number", "name": "contract_amount", "title": "Сумма контракта, ₸", "isRequired": True, "min": 1000000},
+                    {"type": "text", "inputType": "number", "name": "contract_amount", "title": "Сумма контракта, ₸", "isRequired": True, "min": 1000000},
                     {"type": "dropdown", "name": "payment_term", "title": "Условия оплаты",
                      "choices": ["Предоплата", "Отсрочка 30 дней", "Отсрочка 60 дней", "Отсрочка 90 дней"]},
                 ]},
@@ -369,8 +369,8 @@ SERVICES: list[dict] = [
                 company_page(),
                 {"name": "project", "title": "О проекте", "elements": [
                     {"type": "text", "name": "project_name", "title": "Название проекта", "isRequired": True},
-                    {"type": "number", "name": "loan_amount", "title": "Требуемая сумма, ₸", "isRequired": True, "min": 7000000000},
-                    {"type": "number", "name": "loan_term", "title": "Срок, лет", "min": 3, "max": 20, "defaultValue": 10},
+                    {"type": "text", "inputType": "number", "name": "loan_amount", "title": "Требуемая сумма, ₸", "isRequired": True, "min": 7000000000},
+                    {"type": "text", "inputType": "number", "name": "loan_term", "title": "Срок, лет", "min": 3, "max": 20, "defaultValue": 10},
                     {"type": "comment", "name": "project_desc", "title": "Краткое описание проекта"},
                 ]},
             ],
@@ -404,9 +404,9 @@ SERVICES: list[dict] = [
             "pages": [
                 company_page(),
                 {"name": "loan", "title": "Об ипотечном займе", "elements": [
-                    {"type": "number", "name": "loan_amount", "title": "Сумма займа, ₸", "isRequired": True, "min": 5000000, "max": 500000000},
-                    {"type": "number", "name": "bank_rate", "title": "Ставка банка, %", "min": 10, "max": 25, "defaultValue": 20},
-                    {"type": "number", "name": "loan_term", "title": "Срок, мес", "min": 12, "max": 120, "defaultValue": 84},
+                    {"type": "text", "inputType": "number", "name": "loan_amount", "title": "Сумма займа, ₸", "isRequired": True, "min": 5000000, "max": 500000000},
+                    {"type": "text", "inputType": "number", "name": "bank_rate", "title": "Ставка банка, %", "min": 10, "max": 25, "defaultValue": 20},
+                    {"type": "text", "inputType": "number", "name": "loan_term", "title": "Срок, мес", "min": 12, "max": 120, "defaultValue": 84},
                     {"type": "expression", "name": "saving", "title": "Экономия за срок",
                      "expression": "{loan_amount} * ({bank_rate} - 10) / 100 * {loan_term} / 12",
                      "displayStyle": "currency", "currency": "KZT"},
@@ -473,21 +473,21 @@ SERVICES: list[dict] = [
                     "elements": [
                         {"type": "radiogroup", "name": "wagon_condition", "title": "Состояние вагонов", "isRequired": True,
                          "choices": [{"value": "new", "text": "Новые"}, {"value": "used", "text": "Бывшие в эксплуатации"}]},
-                        {"type": "number", "name": "wagon_age", "title": "Возраст вагонов, лет", "min": 1, "max": 15,
+                        {"type": "text", "inputType": "number", "name": "wagon_age", "title": "Возраст вагонов, лет", "min": 1, "max": 15,
                          "visibleIf": "{wagon_condition} = 'used'",
                          "description": "Для б/у вагонов — не более 15 лет"},
                         {"type": "dropdown", "name": "wagon_type", "title": "Тип вагонов", "isRequired": True,
                          "choices": ["Полувагоны", "Крытые вагоны", "Цистерны", "Платформы", "Хопперы"]},
-                        {"type": "number", "name": "wagon_count", "title": "Количество вагонов, ед.", "isRequired": True, "min": 1, "max": 500},
-                        {"type": "number", "name": "unit_price", "title": "Цена за вагон, ₸", "isRequired": True, "min": 5000000, "max": 100000000, "defaultValue": 28000000},
+                        {"type": "text", "inputType": "number", "name": "wagon_count", "title": "Количество вагонов, ед.", "isRequired": True, "min": 1, "max": 500},
+                        {"type": "text", "inputType": "number", "name": "unit_price", "title": "Цена за вагон, ₸", "isRequired": True, "min": 5000000, "max": 100000000, "defaultValue": 28000000},
                     ],
                 },
                 {
                     "name": "terms",
                     "title": "Условия лизинга",
                     "elements": [
-                        {"type": "number", "name": "lease_term", "title": "Срок лизинга, мес", "isRequired": True, "min": 12, "max": 120, "defaultValue": 84},
-                        {"type": "number", "name": "advance_share", "title": "Авансовый платёж, %", "isRequired": True, "min": 15, "max": 50, "defaultValue": 20,
+                        {"type": "text", "inputType": "number", "name": "lease_term", "title": "Срок лизинга, мес", "isRequired": True, "min": 12, "max": 120, "defaultValue": 84},
+                        {"type": "text", "inputType": "number", "name": "advance_share", "title": "Авансовый платёж, %", "isRequired": True, "min": 15, "max": 50, "defaultValue": 20,
                          "validators": [{"type": "expression", "expression": "{advance_share} >= 15",
                                           "text": "Минимальный аванс по программе — 15%"}]},
                     ],
@@ -514,9 +514,9 @@ SERVICES: list[dict] = [
                     "description": "Заполняется после принятия первичной заявки для передачи в BPM-систему БРК-Лизинг.",
                     "elements": [
                         {"type": "html", "name": "stage2_intro", "html": "<div style='padding:8px 12px;background:#fff5e6;border-radius:8px;color:#8a5a10;font-size:13px'>Первичная заявка принята. Предоставьте финансовые показатели и документы по предмету лизинга и поставщику.</div>"},
-                        {"type": "number", "name": "annual_revenue", "title": "Выручка за последний год, ₸", "isRequired": True, "min": 0},
+                        {"type": "text", "inputType": "number", "name": "annual_revenue", "title": "Выручка за последний год, ₸", "isRequired": True, "min": 0},
                         {"type": "boolean", "name": "has_existing_leasing", "title": "Есть ли действующие договоры лизинга?"},
-                        {"type": "number", "name": "existing_leasing_amount", "title": "Остаток обязательств по лизингу, ₸", "min": 0,
+                        {"type": "text", "inputType": "number", "name": "existing_leasing_amount", "title": "Остаток обязательств по лизингу, ₸", "min": 0,
                          "visibleIf": "{has_existing_leasing} = true"},
                         {"type": "dropdown", "name": "collateral_type", "title": "Дополнительное обеспечение", "isRequired": True,
                          "choices": [{"value": "wagons", "text": "Приобретаемые вагоны"}, {"value": "realestate", "text": "Недвижимость"}, {"value": "guarantee", "text": "Гарантия"}, {"value": "deposit", "text": "Денежный депозит"}]},

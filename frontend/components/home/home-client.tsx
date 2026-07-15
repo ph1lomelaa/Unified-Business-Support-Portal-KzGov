@@ -201,14 +201,14 @@ export function HomeClient() {
 
 function Hero() {
   return (
-    <section className="relative -mt-[144px] min-h-[66vh] overflow-hidden bg-[#0c1712] pt-[144px] text-white">
+    <section className="relative -mt-[144px] min-h-[66vh] overflow-hidden bg-[#0a3a22] pt-[144px] text-white">
       {/* Фирменное фото: переговорная с флагом «Байтерек» — фото читается крупнее. */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/hero/boardroom.jpg')" }}
       />
-      {/* Более мягкий скрим — чтобы фото было видно крупнее, а белый текст читался. */}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,17,13,0.80)_0%,rgba(8,17,13,0.56)_46%,rgba(8,17,13,0.30)_76%,rgba(8,17,13,0.50)_100%)]" />
+      {/* Фирменный зелёный скрим (как на baiterek.gov) — фото видно, белый текст читается. */}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,55,33,0.86)_0%,rgba(8,64,38,0.60)_46%,rgba(9,70,42,0.32)_76%,rgba(7,55,33,0.54)_100%)]" />
       <OrnamentPattern className="text-white opacity-[0.05]" />
       <div className="relative mx-auto flex min-h-[calc(66vh-144px)] w-full max-w-[1600px] min-w-0 items-center px-4 py-16 sm:px-6 lg:px-10">
         <div className="w-full max-w-[720px] min-w-0">

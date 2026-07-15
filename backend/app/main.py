@@ -82,6 +82,12 @@ async def lifespan(app: FastAPI):
     from .seed_content import seed_if_empty as seed_content
 
     seed_content()
+    # Демо-новости для главной — сеются на ЛЮБОЙ БД с пустой таблицей новостей
+    # (в т.ч. на существующих стендах без импортированных новостей), чтобы блок
+    # «Новости» не пустовал, когда живой импорт недоступен.
+    from .seed_news import seed_if_empty as seed_news
+
+    seed_news()
     # Load the (now-seeded) status config into the in-memory cache so the
     # application workflow is driven by the editable registry.
     from .status import load_status_config

@@ -230,3 +230,16 @@
   --sjs-corner-radius: 10px;
   --sjs-font-family: var(--font-golos), ui-sans-serif, sans-serif;
 }
+
+/* AI-подсказки, дорисованные под полем визарда (wizard-ai-help.ts): держим их
+   внутри контура карточки формы и переносим длинные строки, чтобы текст не
+   выходил за границы и читался. */
+.sjs-eppb-form [data-ai-help] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sjs-eppb-form [data-ai-help] > div {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

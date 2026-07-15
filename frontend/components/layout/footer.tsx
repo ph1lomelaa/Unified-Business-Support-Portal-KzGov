@@ -41,7 +41,7 @@ const GROUPS = [
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t-2 border-gold bg-[#171B1D] text-white">
+    <footer className="mt-auto border-t-2 border-gold bg-[#0a3a22] text-white">
       <div className="mx-auto max-w-[1600px] px-4 py-14 sm:px-6 lg:px-10">
         <div className="border-b border-white/12 pb-8">
           <div>

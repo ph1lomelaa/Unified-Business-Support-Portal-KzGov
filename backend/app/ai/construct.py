@@ -32,7 +32,9 @@ _COMPANY_PAGE = {
 
 
 def _num(name, title, **kw):
-    return {"type": "number", "name": name, "title": title, **kw}
+    # SurveyJS не имеет типа "number" — числовое поле это text + inputType number,
+    # иначе поле не рендерится в форме.
+    return {"type": "text", "inputType": "number", "name": name, "title": title, **kw}
 
 
 # набор «полей проекта» по категории (spec-примеры: кредит → сумма/срок/ставка/цель,

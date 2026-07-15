@@ -61,7 +61,7 @@ export function Header({
     <header
       className={cn(
         "sticky top-0 z-40 text-white transition-colors duration-200",
-        solid ? "bg-ink shadow-[var(--shadow-pop)]" : "bg-ink/55 backdrop-blur-md"
+        solid ? "bg-[#0a3a22] shadow-[var(--shadow-pop)]" : "bg-[#0a3a22]/60 backdrop-blur-md"
       )}
     >
       <div className="mx-auto flex h-[88px] max-w-[1600px] items-center gap-6 px-4 sm:px-6 lg:px-10">
@@ -143,7 +143,7 @@ export function Header({
               className={cn(
                 "flex h-full items-center border-b-2 px-4 text-[15px] font-semibold text-white transition-colors",
                 pathname.startsWith("/admin")
-                  ? "border-accent"
+                  ? "border-white"
                   : "border-transparent text-white/72 hover:text-white"
               )}
             >
@@ -160,7 +160,7 @@ export function Header({
                 className={cn(
                   "flex h-full items-center border-b-2 px-4 text-[15px] font-semibold text-white transition-colors",
                   active
-                    ? "border-accent"
+                    ? "border-white"
                     : "border-transparent text-white/72 hover:text-white"
                 )}
               >
