@@ -39,9 +39,9 @@ const HELP_TYPES = new Set(["text", "comment", "radiogroup", "dropdown"]);
 const SKIP_INPUT = new Set(["number", "date", "datetime-local", "range", "tel", "time", "month", "week"]);
 
 const CSS = {
-  wrap: "margin-top:8px;display:flex;flex-direction:column;gap:6px;",
+  wrap: "box-sizing:border-box;max-width:100%;margin-top:8px;display:flex;flex-direction:column;gap:6px;",
   ask: "align-self:flex-start;display:inline-flex;align-items:center;gap:5px;border:none;background:none;padding:0;cursor:pointer;color:#0B7A3E;font-size:12px;font-weight:600;",
-  msgBase: "font-size:13px;line-height:1.45;border-radius:8px;padding:8px 10px;border:1px solid;",
+  msgBase: "box-sizing:border-box;max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap;font-size:13px;line-height:1.45;border-radius:8px;padding:8px 10px;border:1px solid;",
   warn: "background:#FFF7E6;color:#8A5A10;border-color:#F3D98B;",
   option: "background:#E3F1EC;color:#0F6E56;border-color:#BFE3D3;",
   explain: "background:#F3F4F1;color:#4A4A4A;border-color:#E3E5DF;",
@@ -203,7 +203,7 @@ export function attachWizardAiHelp(model: Model, ctx: Ctx): () => void {
     wrap.appendChild(ask);
 
     const msgs = document.createElement("div");
-    msgs.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+    msgs.style.cssText = "box-sizing:border-box;max-width:100%;display:flex;flex-direction:column;gap:6px;";
     wrap.appendChild(msgs);
     try {
       el.appendChild(wrap);
