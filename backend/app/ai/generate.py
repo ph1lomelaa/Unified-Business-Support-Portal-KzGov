@@ -65,7 +65,7 @@ def _validate(data) -> dict:
 
 
 def generate_service(text: str) -> dict:
-    client = get_client()
+    client = get_client(timeout=settings.ai_generate_timeout)
     if not client:
         raise AiError(
             "AI-генерация недоступна: не задан ANTHROPIC_API_KEY. "
@@ -113,7 +113,7 @@ def generate_application_example(form: dict) -> dict:
     pages = form.get("pages") if isinstance(form, dict) else None
     if not isinstance(pages, list) or not pages:
         raise AiError("Невозможно создать пример: схема формы пуста.")
-    client = get_client()
+    client = get_client(timeout=settings.ai_generate_timeout)
     if not client:
         raise AiError("AI-генерация недоступна: не задан ANTHROPIC_API_KEY.")
     try:

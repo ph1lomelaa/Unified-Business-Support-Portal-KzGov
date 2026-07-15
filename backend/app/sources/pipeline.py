@@ -10,7 +10,6 @@ import httpx
 from sqlalchemy import case
 from sqlmodel import Session, select
 
-from ..ai.generate import AiError, generate_application_example, generate_service
 from ..config import settings
 from ..models import (
     ExtractedEvidence,
@@ -116,13 +115,13 @@ def ensure_official_sources(db: Session) -> None:
         db.commit()
 
 
-def run_source(db: Session, source_id: str) -> OfficialImportRun:
+def run_source(db: Session, source_id: str, max_pages: int | None = None) -> OfficialImportRun:
     ensure_official_sources(db)
     source = db.get(OfficialSource, source_id)
     if not source:
         raise ValueError("Источник не найден")
     if source.id == "bgov":
-        return run_bgov(db, source)
+        return run_bgov(db, source, max_pages=max_pages)
     if source.id == "damu":
         adapter = HtmlScrapeAdapter(
             source_id="damu",
@@ -140,7 +139,10 @@ def run_source(db: Session, source_id: str) -> OfficialImportRun:
     raise ValueError("Для источника пока нет активного адаптера")
 
 
-def run_bgov(db: Session, source: OfficialSource) -> OfficialImportRun:
+def run_bgov(db: Session, source: OfficialSource, max_pages: int | None = None) -> OfficialImportRun:
+    # `max_pages` ограничивает обход для интерактивной кнопки «Обновить сейчас»
+    # (чтобы клик отвечал за секунды, а не обходил все страницы). Плановый
+    # обход из планировщика вызывается без ограничения (max_pages=None).
     run = OfficialImportRun(sourceId=source.id, startedAt=utcnow())
     db.add(run)
     db.commit()
@@ -162,6 +164,8 @@ def run_bgov(db: Session, source: OfficialSource) -> OfficialImportRun:
                 "checkedAt": utcnow().isoformat(),
             }
             cards, last_page = cards_from_page(parse_data_page(first_html), source.baseUrl)
+            if max_pages is not None:
+                last_page = min(last_page, max_pages)
             found += len(cards)
             changed += persist_cards(db, client, gate, source, cards)
             sleep(robots.crawl_delay)
@@ -289,7 +293,7 @@ def persist_cards(db: Session, client: httpx.Client, gate: RobotsGate, source: O
                 db.add(existing_import)
             if existing_import and not (existing_import.draftPayload or {}).get("applicationExample"):
                 payload = existing_import.draftPayload or {}
-                _attach_application_example(payload)
+                payload["applicationExample"] = _fallback_application_example(payload.get("form") or {})
                 existing_import.draftPayload = payload
                 existing_import.updatedAt = utcnow()
                 db.add(existing_import)
@@ -422,56 +426,51 @@ def map_org_id(card, orgs: dict[str, Organization]) -> str | None:
 
 
 def extract_payload(card) -> tuple[dict, str, float]:
-    # card.conditions/description/materials come straight from bgov's own
-    # structured data (not a guess) — always ground the payload in that, and
-    # only use the AI generator to fill in a richer form schema on top.
+    # Crawl-time извлечение — ТОЛЬКО детерминированное: card.conditions /
+    # description / documents / materials приходят из собственных структурных
+    # данных bgov (не догадки), поэтому карточка, условия и документы сразу
+    # заполнены. Тяжёлую AI-генерацию схемы формы НЕ вызываем на каждой
+    # карточке (это делало обход десятки минут и роняло его по таймауту) —
+    # rich-форму собирает AI лениво при создании черновика аналитиком.
     base = draft_payload(card)
-    try:
-        generated = generate_service(card.text)
-        base["form"] = generated.get("form", base["form"])
-        base["extracted_rules"] = generated.get("extracted_rules", base["extracted_rules"])
-        confidence = 0.9
-    except AiError:
-        confidence = 0.85
-    base["source"] = {"url": card.url, "organization": card.org_name, "raw": card.raw}
-    _attach_application_example(base)
-    return base, "ai_extracted", confidence
+    base["source"] = {
+        "url": card.url,
+        "organization": card.org_name,
+        "raw": card.raw,
+        # Текст программы сохраняем для ленивой AI-генерации формы на этапе
+        # «Создать черновик» (см. create_draft_service).
+        "text": card.text,
+    }
+    base["applicationExample"] = _fallback_application_example(base.get("form") or {})
+    # Структурные данные bgov — высокая достоверность, но форма ещё базовая:
+    # статус «ai_extracted», если есть извлечённые правила/условия, иначе
+    # «imported».
+    status = "ai_extracted" if base.get("extracted_rules") else "imported"
+    return base, status, 0.85
 
 
 def extract_html_payload(candidate: HtmlServiceCandidate) -> tuple[dict, str, float]:
-    try:
-        payload = generate_service(candidate.text)
-        confidence = 0.76
-        status = "ai_extracted"
-    except AiError:
-        payload = {
-            "card": {
-                "title": candidate.title,
-                "summary": candidate.text[:420],
-                "category": "subsidy",
-                "conditions": [],
-                "documents": [],
-            },
-            "form": {"pages": []},
-            "extracted_rules": [],
-        }
-        confidence = 0.5
-        status = "imported"
-    payload["source"] = {
-        "url": candidate.url,
-        "organization": candidate.organization,
-        "raw": {"content": candidate.text},
+    # Как и в bgov — без AI на этапе обхода; базовая карточка + форма-заглушка,
+    # AI-обогащение формы происходит при создании черновика.
+    payload = {
+        "card": {
+            "title": candidate.title,
+            "summary": candidate.text[:420],
+            "category": "subsidy",
+            "conditions": [],
+            "documents": [],
+        },
+        "form": {"pages": []},
+        "extracted_rules": [],
+        "source": {
+            "url": candidate.url,
+            "organization": candidate.organization,
+            "raw": {"content": candidate.text},
+            "text": candidate.text,
+        },
     }
-    _attach_application_example(payload)
-    return payload, status, confidence
-
-
-def _attach_application_example(payload: dict) -> None:
-    form = payload.get("form") if isinstance(payload.get("form"), dict) else {}
-    try:
-        payload["applicationExample"] = generate_application_example(form)
-    except AiError:
-        payload["applicationExample"] = _fallback_application_example(form)
+    payload["applicationExample"] = _fallback_application_example(payload["form"])
+    return payload, "imported", 0.5
 
 
 def _fallback_application_example(form: dict) -> dict:

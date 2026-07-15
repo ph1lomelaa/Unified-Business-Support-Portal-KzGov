@@ -65,9 +65,11 @@ REJECT_COMMENT = (
 # (number, bin, slug, status, days_ago, answers)
 APPS: list[tuple] = [
     ("EPPB-2026-000101", "123456789012", "akk-animal", "in_review", 2,
-     {"bin": "123456789012", "project_goal": "investment", "loan_amount": 150000000,
-      "loan_term": 60, "own_share": 25, "cattle_amount": 120000000, "cattle_head": 150,
-      "bank_rate": 18}),
+     {"bin": "123456789012", "applicant_type": "direct",
+      "target_use": ["Приобретение скота (КРС/МРС)", "Корма"],
+      "loan_amount": 150000000, "loan_term": 24, "livestock_type": "cattle",
+      "cattle_amount": 120000000, "cattle_head": 150,
+      "program_rate": 5, "bank_rate": 18}),
     ("EPPB-2026-000102", "123456789012", "damu-subsidy", "needs_changes", 6,
      {"bin": "123456789012", "bank": "Halyk Bank", "loan_amount": 80000000,
       "bank_rate": 19, "loan_term": 36}),

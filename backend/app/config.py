@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     # Явный выбор провайдера: "auto" (Claude → OpenAI), "openai" или "anthropic".
     ai_provider: str = "auto"
+    # Таймаут для тяжёлой генерации (форма услуги, пример заявки). Дефолтные 6с
+    # (навигатор) слишком малы: генерация SurveyJS-схемы на gpt-4o-mini занимает
+    # ~15–20с, поэтому короткий таймаут ронял «AI-генерацию из текста» и импорт.
+    ai_generate_timeout: float = 45.0
 
     # Optional key for the data.egov.kz integration adapter.
     data_egov_api_key: str = ""

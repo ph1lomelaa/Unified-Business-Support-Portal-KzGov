@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Session, func, select
 
+from ..ai.generate import AiError, generate_service
 from ..audit_log import record_audit
 from ..db import get_session
 from ..models import (
@@ -119,9 +120,17 @@ def publish_news(body: PublishNewsBody, db: Session = Depends(get_session)):
 
 
 @router.post("/{source_id}/run")
-def run_import(source_id: str, db: Session = Depends(get_session)):
+def run_import(
+    source_id: str,
+    maxPages: int | None = Query(default=4, ge=1, le=20),
+    db: Session = Depends(get_session),
+):
+    # Интерактивная кнопка «Обновить сейчас» ограничивает обход (по умолчанию
+    # 4 страницы bgov — этого достаточно, чтобы захватить обе контрольные
+    # услуги: «Агробизнес животноводство» и «вагоны в лизинг»), чтобы клик
+    # отвечал за секунды. Полный обход выполняет плановый импорт.
     try:
-        run = run_source(db, source_id)
+        run = run_source(db, source_id, max_pages=maxPages)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return {
@@ -161,6 +170,23 @@ def create_draft_service(
     payload = item.draftPayload or {}
     card = payload.get("card") if isinstance(payload.get("card"), dict) else {}
     form = payload.get("form") if isinstance(payload.get("form"), dict) else {"pages": []}
+    # Ленивое AI-обогащение: обход источников намеренно детерминированный и
+    # быстрый (без AI на каждую карточку), поэтому черновая форма — базовая.
+    # Здесь, в момент осознанного действия аналитика «Создать черновик»,
+    # один раз генерируем богатую многостраничную SurveyJS-схему из текста
+    # программы. Карточку/документы/материалы оставляем из структурных данных
+    # bgov (реальные), AI дополняет только форму. Ошибка AI — не блокирует.
+    source_text = (payload.get("source") or {}).get("text") if isinstance(payload.get("source"), dict) else ""
+    if source_text and _form_is_basic(form):
+        try:
+            generated = generate_service(source_text)
+            if isinstance(generated.get("form"), dict) and generated["form"].get("pages"):
+                form = generated["form"]
+                payload["form"] = form
+                item.draftPayload = payload
+                db.add(item)
+        except AiError:
+            pass  # оставляем базовую форму — импорт всё равно создаёт услугу
     service = Service(
         slug=_unique_slug(db, f"{org.id}-{slugify(item.title)}"),
         orgId=org.id,
@@ -207,6 +233,18 @@ def create_draft_service(
     db.commit()
     db.refresh(service)
     return {"id": service.id, "slug": service.slug}
+
+
+def _form_is_basic(form: dict) -> bool:
+    """Базовая заглушка формы из детерминированного обхода (страница «О компании»
+    с bin + описание проекта). Признак — мало полей; тогда стоит обогатить AI."""
+    if not isinstance(form, dict):
+        return True
+    pages = form.get("pages") if isinstance(form.get("pages"), list) else []
+    total_fields = sum(
+        len(page.get("elements", [])) for page in pages if isinstance(page, dict)
+    )
+    return total_fields <= 3
 
 
 def _news_to_admin(item: NewsItem, org: Organization | None) -> dict:
