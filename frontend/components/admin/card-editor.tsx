@@ -115,7 +115,7 @@ export function CardEditor({
                 placeholder="Markdown допускается"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="e-cat">Категория</Label>
                 <Select
@@ -150,7 +150,7 @@ export function CardEditor({
           onAdd={() => setConditions([...conditions, { label: "", value: "" }])}
           onRemove={(i) => setConditions(conditions.filter((_, x) => x !== i))}
           render={(c, i) => (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Input
                 value={c.label}
                 placeholder="Ставка"

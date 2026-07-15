@@ -201,7 +201,7 @@ export function HomeClient() {
 
 function Hero() {
   return (
-    <section className="relative -mt-[144px] min-h-[66vh] overflow-hidden bg-[#0a3a22] pt-[144px] text-white">
+    <section className="relative -mt-[88px] min-h-[66vh] overflow-hidden bg-[#0a3a22] pt-[88px] text-white lg:-mt-[144px] lg:pt-[144px]">
       {/* Фирменное фото: переговорная с флагом «Байтерек» — фото читается крупнее. */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -210,7 +210,7 @@ function Hero() {
       {/* Фирменный зелёный скрим (как на baiterek.gov) — фото видно, белый текст читается. */}
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,55,33,0.86)_0%,rgba(8,64,38,0.60)_46%,rgba(9,70,42,0.32)_76%,rgba(7,55,33,0.54)_100%)]" />
       <OrnamentPattern className="text-white opacity-[0.05]" />
-      <div className="relative mx-auto flex min-h-[calc(66vh-144px)] w-full max-w-[1600px] min-w-0 items-center px-4 py-16 sm:px-6 lg:px-10">
+      <div className="relative mx-auto flex min-h-[calc(66vh-88px)] w-full max-w-[1600px] min-w-0 items-center px-4 py-16 sm:px-6 lg:min-h-[calc(66vh-144px)] lg:px-10">
         <div className="w-full max-w-[720px] min-w-0">
           {/* Официальный, «госсайтовый» стиль: спокойный надзаголовок + чёткий белый заголовок */}
           <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/70">
